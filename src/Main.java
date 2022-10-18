@@ -1,13 +1,9 @@
-import models.Client;
-
-import java.io.*;
-import java.net.*;
-import java.nio.Buffer;
+import models.messages.HandshakeMessage;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        Client client = new Client();
+        HandshakeMessage hsMessage = new HandshakeMessage(25);
 
-        client.main();
+        System.out.println(hsMessage);
     }
 }
