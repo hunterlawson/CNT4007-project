@@ -1,7 +1,6 @@
 package controllers;
 
 import exceptions.AppConfigException;
-import models.Peer;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
