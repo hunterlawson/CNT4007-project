@@ -25,12 +25,11 @@ public class App {
     // Peer data
     ArrayList<Peer> peers = new ArrayList<Peer>();
 
-    /*
-        Private constructor - singleton class
-
-        (1) Read in the config file
-        (2) Read in the peer info file
-    */
+    // Private constructor - singleton class
+    // (1) Read in the config file
+    // (2) Read in the peer info file
+    // Performs any validation of configuration files and throws any errors that might occur
+    // This constructor does not initiate any functionality of the application, it just deals with configuration
     private App() throws AppConfigException {
         // Read config file, store the data, and throw any errors
         try {
@@ -85,11 +84,13 @@ public class App {
             throw new AppConfigException("Variable: [" + variableName + "]");
         }
 
+        // Check that the current variable has the correct name
         String[] pieces =line.split(" ");
         if(!pieces[0].equals(variableName)) {
             throw new AppConfigException("Incorrect name for variable: [" + variableName + "]");
         }
 
+        // Check that the current variable has the correct number of values (1)
         if(pieces.length != 2) {
             throw new AppConfigException("Incorrect number of values for [" + variableName + "]: " + pieces.length);
         }
