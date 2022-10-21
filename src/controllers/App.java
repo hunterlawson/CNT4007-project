@@ -81,10 +81,6 @@ public class App {
         return instance;
     }
 
-    public void run() throws Exception {
-
-    }
-
     // Read a configuration variable from a line in the config file, handle any errors that might occur
     String getConfigValue(String variableName, String line)  throws AppConfigException {
         if(line == null) {
@@ -100,5 +96,9 @@ public class App {
         }
 
         return pieces[1];
+    }
+
+    public void run() throws Exception {
+
     }
 }
