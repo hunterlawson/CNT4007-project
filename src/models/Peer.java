@@ -1,6 +1,7 @@
 package models;
 
 public class Peer {
+
     int id;
     String hostname;
     int port;
@@ -44,4 +45,5 @@ public class Peer {
     public void setHasFile(boolean hasFile) {
         this.hasFile = hasFile;
     }
+
 }
