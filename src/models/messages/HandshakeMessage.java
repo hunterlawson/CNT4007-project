@@ -1,11 +1,9 @@
 package models.messages;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 public class HandshakeMessage {
-    final static String header = "P2PFILESHARINGPROJ";
+    final static String HEADER = "P2PFILESHARINGPROJ";
     final static int messageSize = 32;
     int peerId;
 
@@ -21,11 +19,12 @@ public class HandshakeMessage {
         this.peerId = peerId;
     }
 
+    // Return the message represented as a byte array
     public byte[] getMessageBytes() {
         byte[] messageBytes = new byte[messageSize];
 
         // Add the 18-byte message header
-        byte[] headerBytes = header.getBytes();
+        byte[] headerBytes = HEADER.getBytes();
         for(int i = 0; i < 18; i++) {
             messageBytes[i] = headerBytes[i];
         }

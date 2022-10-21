@@ -1,4 +1,4 @@
-package models;
+package controllers;
 
 import java.io.*;
 import java.net.*;
