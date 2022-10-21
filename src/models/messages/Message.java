@@ -14,17 +14,11 @@ public class Message {
         BITFIELD,
         REQUEST,
         PIECE;
-
     }
     byte type;
     byte[] payload;
 
-    /*
-        Construct a message with the given type and payload.
-        This function also validates the created message to ensure that it follows the rules:
-
-        CHOKE, UNCHOKE, INTERESTED, NOT_INTERESTED: No payload
-     */
+    // Construct a message with the given type and payload and validate the message
     public Message(MessageType type, byte[] payload) throws InvalidMessage {
         validateMessage(type, payload);
 
@@ -67,6 +61,7 @@ public class Message {
         }
     }
 
+    // Return the message represented as a byte array
     public byte[] getMessageBytes() {
         // Messages consist of:
         // 4 byte length
