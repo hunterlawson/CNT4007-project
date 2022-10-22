@@ -1,5 +1,6 @@
 # P2P Fileshare Application
-CNT4007 Computer Network Fundamentals project
+CNT4007 Computer Network Fundamentals project  
+[Project GitHub page](https://github.com/hunterlawson/CNT4007-project/)
 
 ### Group Members
 - Faizan Mohammad

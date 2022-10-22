@@ -1,6 +1,6 @@
 package models.messages;
 
-import exceptions.InvalidMessage;
+import exceptions.InvalidMessageException;
 
 import java.nio.ByteBuffer;
 
@@ -19,7 +19,7 @@ public class Message {
     byte[] payload;
 
     // Construct a message with the given type and payload and validate the message
-    public Message(MessageType type, byte[] payload) throws InvalidMessage {
+    public Message(MessageType type, byte[] payload) throws InvalidMessageException {
         validateMessage(type, payload);
 
         this.type = (byte) type.ordinal();
@@ -38,7 +38,7 @@ public class Message {
         Validates the message that can be created with the given inputs.
         Throws an InvalidMessage exception if the arguments do not make a valid exception
      */
-    public static void validateMessage(MessageType type, byte[] payload) throws InvalidMessage {
+    public static void validateMessage(MessageType type, byte[] payload) throws InvalidMessageException {
         switch(type) {
             case CHOKE:
                 if (payload.length != 0) {
@@ -57,7 +57,7 @@ public class Message {
                 break;
             case NOT_INTERESTED: {
                 if (payload.length != 0) {
-                    throw new InvalidMessage(type.toString() + " messages require an empty payload");
+                    throw new InvalidMessageException(type.toString() + " messages require an empty payload");
                 }
                 break;
             }
@@ -69,7 +69,7 @@ public class Message {
                 break;
             case PIECE: {
                 if(payload.length != 4) {
-                    throw new InvalidMessage(type.toString() + " messages require a payload of 4 bytes");
+                    throw new InvalidMessageException(type.toString() + " messages require a payload of 4 bytes");
                 }
                 break;
             }
