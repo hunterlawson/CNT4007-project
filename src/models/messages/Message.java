@@ -41,8 +41,20 @@ public class Message {
     public static void validateMessage(MessageType type, byte[] payload) throws InvalidMessageException {
         switch(type) {
             case CHOKE:
+                if (payload.length != 0) {
+                    throw new InvalidMessageException(type.toString() + " messages require an empty payload");
+                }
+                break;
             case UNCHOKE:
+                if (payload.length != 0) {
+                    throw new InvalidMessageException(type.toString() + " messages require an empty payload");
+                }
+                break;
             case INTERESTED:
+                if (payload.length != 0) {
+                    throw new InvalidMessageException(type.toString() + " messages require an empty payload");
+                }
+                break;
             case NOT_INTERESTED: {
                 if (payload.length != 0) {
                     throw new InvalidMessageException(type.toString() + " messages require an empty payload");
@@ -51,6 +63,10 @@ public class Message {
             }
             case HAVE:
             case REQUEST:
+                if(payload.length != 4) {
+                    throw new InvalidMessageException(type.toString() + " messages require a payload of 4 bytes");
+                }
+                break;
             case PIECE: {
                 if(payload.length != 4) {
                     throw new InvalidMessageException(type.toString() + " messages require a payload of 4 bytes");

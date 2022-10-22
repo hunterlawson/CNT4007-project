@@ -1,10 +1,17 @@
 package controllers;
 
-public class Peer {
+public class Peer implements Comparable<Peer> {
+
     int id;
     String hostname;
     int port;
     boolean hasFile;
+
+
+
+    boolean choked = false;
+
+    double downloadRate;
 
     public Peer(int id, String hostname, int port, boolean hasFile) {
         this.id = id;
@@ -43,5 +50,31 @@ public class Peer {
 
     public void setHasFile(boolean hasFile) {
         this.hasFile = hasFile;
+    }
+
+    public double getDownloadRate() {
+        return downloadRate;
+    }
+
+    public void setDownloadRate(double downloadRate) {
+        this.downloadRate = downloadRate;
+    }
+
+    public boolean isChoked() {
+        return choked;
+    }
+
+    public void setChoked(boolean choked) {
+        this.choked = choked;
+    }
+
+    @Override
+    public int compareTo(Peer peer) {
+        if (downloadRate == peer.downloadRate)
+            return 0;
+        else if (downloadRate > peer.downloadRate)
+            return 1;
+        else
+            return -1;
     }
 }
