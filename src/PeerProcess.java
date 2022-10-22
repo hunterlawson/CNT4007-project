@@ -3,6 +3,7 @@ import exceptions.InvalidMessage;
 import models.messages.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 
 //NOT COMPLETE
@@ -10,6 +11,11 @@ import java.util.Random;
 
 public class PeerProcess {
     boolean choked = false;
+
+    int k = 0;
+    int m = 0;
+    int p = 0;
+
     PeerLogger logger;
 
     //this peer's ID
@@ -38,6 +44,12 @@ public class PeerProcess {
         return false;
     }
 
+    public double getDownloadRate(Peer peer) {
+        double rate = 0;
+
+        return rate;
+    }
+
     //determine if peer has interesting piece
     public boolean isInterested() {
         return interested;
@@ -45,10 +57,30 @@ public class PeerProcess {
 
     //call after p seconds
     //reselect preferred neighbors
-    public void setPreferredNeighbors() {
+    public void setPreferredNeighbors() throws InvalidMessage {
         if (!isComplete()) {
             //calculate download rate of each
+
             //pick k neighbors w/ highest download rate
+            Collections.sort(neighbors);
+            for (int i=0; i<k; i++) {
+                //if neighbor is choked, send unchoke message
+                if (neighbors.get(i).isChoked()) {
+                    //send unchoke message to that neighbor
+                    Message outMessage = new Message(Message.MessageType.UNCHOKE, null);
+                    //send request message
+                    sendMessage(outMessage);
+                }
+            }
+
+            //send choke messages to the rest of the neighbors (that aren't already)
+            for (int i=k; k<neighbors.size(); i++) {
+                if (!neighbors.get(i).isChoked()) {
+                    Message outMessage = new Message(Message.MessageType.CHOKE, null);
+                    //send request message
+                    sendMessage(outMessage);
+                }
+            }
         }
         else {
             //choose preferred neighbors randomly among those interested
