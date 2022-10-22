@@ -1,5 +1,5 @@
 import controllers.Peer;
-import exceptions.InvalidMessage;
+import exceptions.InvalidMessageException;
 import models.messages.*;
 
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ public class PeerThread {
 
     //call after p seconds
     //reselect preferred neighbors
-    public void setPreferredNeighbors() throws InvalidMessage {
+    public void setPreferredNeighbors() throws InvalidMessageException {
         if (!isComplete()) {
             //calculate download rate of each
 
@@ -89,7 +89,7 @@ public class PeerThread {
 
     //call every m seconds
     //selects choked neighbor randomly to unchoke
-    public void optimisticUnchoke() throws InvalidMessage {
+    public void optimisticUnchoke() throws InvalidMessageException {
         //get random neighbor
         Random rand = new Random();
         int n = rand.nextInt(neighbors.size());
@@ -102,7 +102,7 @@ public class PeerThread {
     }
 
     //might need to be placed somewhere else
-    public void readMessage(byte[] message) throws InvalidMessage {
+    public void readMessage(byte[] message) throws InvalidMessageException {
 
         //read in message
         //parse message
