@@ -1,5 +1,12 @@
+import controllers.Peer;
 import exceptions.InvalidMessage;
 import models.messages.*;
+
+import java.util.ArrayList;
+import java.util.Random;
+
+//NOT COMPLETE
+//some methods/functionality should be in peerProcess, others in peerThread
 
 public class PeerProcess {
     boolean choked = false;
@@ -12,6 +19,8 @@ public class PeerProcess {
     int peerID2;
 
     boolean interested = false;
+
+    ArrayList<Peer> neighbors;
 
     public void sendMessage(Message message) {
 
@@ -27,6 +36,37 @@ public class PeerProcess {
     //returns true if file is completely downloaded
     public boolean isComplete() {
         return false;
+    }
+
+    //determine if peer has interesting piece
+    public boolean isInterested() {
+        return interested;
+    }
+
+    //call after p seconds
+    //reselect preferred neighbors
+    public void setPreferredNeighbors() {
+        if (!isComplete()) {
+            //calculate download rate of each
+            //pick k neighbors w/ highest download rate
+        }
+        else {
+            //choose preferred neighbors randomly among those interested
+        }
+    }
+
+    //call every m seconds
+    //selects choked neighbor randomly to unchoke
+    public void optimisticUnchoke() throws InvalidMessage {
+        //get random neighbor
+        Random rand = new Random();
+        int n = rand.nextInt(neighbors.size());
+
+        //send unchoke message to that neighbor
+
+        Message outMessage = new Message(Message.MessageType.UNCHOKE, null);
+        //send request message
+        sendMessage(outMessage);
     }
 
     //might need to be placed somewhere else
@@ -97,7 +137,7 @@ public class PeerProcess {
             case 7: {
                 //send request or
                 //determine if not interested
-                if (isComplete()) {
+                if (isComplete() || isInterested()) {
                     Message outMessage = new Message(Message.MessageType.NOT_INTERESTED, null);
                     logger.writeLog("Peer " + peerID1 + " has downloaded the complete file.");
                     //send request message
