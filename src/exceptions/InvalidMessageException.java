@@ -1,8 +1,8 @@
 package exceptions;
 
 // This message should be thrown when creating a message with invalid input
-public class InvalidMessage extends Exception {
-    public InvalidMessage(String msg) {
+public class InvalidMessageException extends Exception {
+    public InvalidMessageException(String msg) {
         super(msg);
     }
 }

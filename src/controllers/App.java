@@ -50,8 +50,8 @@ public class App {
         // Read the peer info file, store them in the peer list, and throw any errors
         try {
             BufferedReader br = new BufferedReader(new FileReader(PEER_FILENAME));
-            String line = "";
             // Iterate through the list of peers in the file, create new peer objects, and add them to the "peers" list
+            String line = "";
             while((line = br.readLine()) != null) {
                 // For every peer in the file, we should create a new peer object and store it
                 Peer p = parsePeer(line);
@@ -109,11 +109,16 @@ public class App {
         }
 
         // Create the peer object with the parsed values
+        int peerId = Integer.parseInt(values[0]);
+        String hostName = values[1];
+        int port = Integer.parseInt(values[2]);
+        boolean hasFile = Integer.parseInt(values[3]) == 0 ? false : true;
+
         return new Peer(
-                Integer.parseInt(values[0]),
-                values[1],
-                Integer.parseInt(values[2]),
-                Integer.parseInt(values[3]) == 0 ? false : true
+                peerId,
+                hostName,
+                port,
+                hasFile
         );
     }
 
