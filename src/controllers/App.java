@@ -118,7 +118,12 @@ public class App {
         );
     }
 
+    // Run the peer application
+    // Spawn additional client/server threads and handle incoming connections
+    // Choke/unchoke connections as necessary
     public void run() throws Exception {
+        while(true) {
 
+        }
     }
 }
