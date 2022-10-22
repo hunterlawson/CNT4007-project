@@ -9,7 +9,7 @@ import java.util.Random;
 //NOT COMPLETE
 //some methods/functionality should be in peerProcess, others in peerThread
 
-public class PeerProcess {
+public class PeerThread {
     boolean choked = false;
 
     int k = 0;
