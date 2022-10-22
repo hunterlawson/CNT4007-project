@@ -21,6 +21,9 @@ public class App {
     int fileSize;
     int pieceSize;
 
+    // ID of this peer
+    int ID;
+
     // Peer data
     ArrayList<Peer> peers = new ArrayList<Peer>();
 
@@ -120,6 +123,10 @@ public class App {
                 port,
                 hasFile
         );
+    }
+
+    public void setPeerID(int peerID) {
+        ID = peerID;
     }
 
     // Run the peer application
