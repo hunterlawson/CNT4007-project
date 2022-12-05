@@ -6,8 +6,7 @@ import java.util.*;
 import java.lang.*;
 import java.util.logging.Handler;
 
-class Server implements Runnable
-{
+class Server implements Runnable {
     //add in our test values to temporarily work with function
     private static int peerID = 1000;
     private static String hostName = "";

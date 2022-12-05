@@ -26,7 +26,27 @@ public class Message {
         this.payload = payload;
     }
 
-    public byte getType() {
+    // Construct a message from the give bytes
+    public Message(byte[] bytes) throws InvalidMessageException {
+        // Get the message type field
+        byte messageTypeByte = bytes[4];
+        if(messageTypeByte >= MessageType.values().length || messageTypeByte < 0) {
+            throw new InvalidMessageException("Invalid message type provided: " + messageTypeByte);
+        }
+        this.type = messageTypeByte;
+
+        int payloadLength = ByteBuffer.wrap(bytes, 0, 4).getInt() - 1;
+        this.payload = new byte[payloadLength];
+        for(int i = 0; i < payloadLength; i++) {
+            this.payload[i] = bytes[5 + i];
+        }
+    }
+
+    public MessageType getType() {
+        return MessageType.values()[type];
+    }
+
+    public byte getTypeBytes() {
         return type;
     }
 
@@ -39,22 +59,11 @@ public class Message {
         Throws an InvalidMessage exception if the arguments do not make a valid exception
      */
     public static void validateMessage(MessageType type, byte[] payload) throws InvalidMessageException {
+        // Validate that the message type has the correct payload size
         switch(type) {
             case CHOKE:
-                if (payload.length != 0) {
-                    throw new InvalidMessageException(type.toString() + " messages require an empty payload");
-                }
-                break;
             case UNCHOKE:
-                if (payload.length != 0) {
-                    throw new InvalidMessageException(type.toString() + " messages require an empty payload");
-                }
-                break;
             case INTERESTED:
-                if (payload.length != 0) {
-                    throw new InvalidMessageException(type.toString() + " messages require an empty payload");
-                }
-                break;
             case NOT_INTERESTED: {
                 if (payload.length != 0) {
                     throw new InvalidMessageException(type.toString() + " messages require an empty payload");
@@ -63,17 +72,17 @@ public class Message {
             }
             case HAVE:
             case REQUEST:
-                if(payload.length != 4) {
-                    throw new InvalidMessageException(type.toString() + " messages require a payload of 4 bytes");
-                }
-                break;
             case PIECE: {
                 if(payload.length != 4) {
                     throw new InvalidMessageException(type.toString() + " messages require a payload of 4 bytes");
                 }
                 break;
             }
-
+            case BITFIELD: {
+                if(payload.length != 2) {
+                    throw new InvalidMessageException(type.toString() + " messages require a payload of 2 bytes");
+                }
+            }
         }
     }
 

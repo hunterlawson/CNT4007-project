@@ -19,19 +19,21 @@ public class peerProcess {
         }
 
         // Take command line input - peerID
-        if(args.length != 2) {
+        if(args.length != 1) {
             throw new CLIException("Incorrect number of arguments given");
         }
 
+        // Set the peer's ID to the argument passed in from the command line
         try {
-            int peerID = Integer.parseInt(args[1]);
+            int peerID = Integer.parseInt(args[0]);
             app.setPeerID(peerID);
             System.out.println("Application created with peer ID: " + peerID);
         } catch(Exception e) {
             throw new CLIException("Invalid input for argument: Peer ID");
         }
 
-        System.out.println("Starting application - Starting peer listener");
+        // Run the File Share Application
+        System.out.println("Starting application - Starting peer application");
         // Exceptions occurred when running the application can be caught depending on the type
         try {
             app.run();
