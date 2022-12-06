@@ -9,27 +9,25 @@ public class peerProcess {
         System.out.println("Working directory: " + System.getProperty("user.dir"));
         System.out.println("Starting application - Loading configuration files");
 
-        // Exceptions occurred when creating the application should be forwarded to the calling process
-        // These exceptions can't be handled at runtime because configuring the application should not fail
-        App app;
-        try {
-            app = App.getApp();
-        } catch(Exception e) {
-            throw e;
-        }
-
         // Take command line input - peerID
         if(args.length != 1) {
             throw new CLIException("Incorrect number of arguments given");
         }
 
         // Set the peer's ID to the argument passed in from the command line
+        int peerId;
         try {
-            int peerID = Integer.parseInt(args[0]);
-            app.setPeerID(peerID);
-            System.out.println("Application created with peer ID: " + peerID);
+            peerId = Integer.parseInt(args[0]);
         } catch(Exception e) {
             throw new CLIException("Invalid input for argument: Peer ID");
+        }
+
+        // Create an instance of the peer application
+        App app;
+        try {
+            app = App.getApp(peerId);
+        } catch(Exception e) {
+            throw e;
         }
 
         // Run the File Share Application

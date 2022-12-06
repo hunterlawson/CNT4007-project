@@ -7,6 +7,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.stream.Collectors;
 
 public class App {
@@ -23,6 +24,8 @@ public class App {
     String filename;
     int fileSize;
     int pieceSize;
+    // Total number of pieces needed to download the entire file
+    int numPieces;
 
     // This application's peer information
     Peer thisPeer = null;
@@ -30,11 +33,28 @@ public class App {
     // Peer data
     ArrayList<Peer> peers = new ArrayList<>();
 
+    // Bitfield - used to store what pieces this peer has
+    BitSet bitField;
+
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
-    private App() throws AppConfigException {
+    private App(int peerId) throws AppConfigException {
         // Read in the config file data and store it in the app
         readConfigFiles();
+        // Calculate the total number of pieces = ceil(fileSize / pieceSize)
+        this.numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
+        // Initialize the bitField with the corresponding number of bits
+        this.bitField = new BitSet(this.numPieces);
+
+        // If this peer has the entire file, then the bitField is all 1's
+        if(this.thisPeer.hasFile) {
+            bitField.set(0, bitField.length());
+        }
+
+        System.out.println("This peer has the bitfield: ");
+        for(int i = 0; i < bitField.length(); i++) {
+            System.out.print(bitField.get(i));
+        }
     }
 
     // Performs any validation of configuration files and throws any errors that might occur
@@ -74,11 +94,11 @@ public class App {
     }
 
     // Singleton class static instance is returned instead of constructing a new instance
-    public static App getApp() throws AppConfigException {
+    public static App getApp(int peerId) throws AppConfigException {
         // Initialize the app and throw any errors
         if(instance == null) {
             try {
-                instance = new App();
+                instance = new App(peerId);
             } catch(Exception e) {
                 throw new AppConfigException("Error initializing the application", e);
             }
