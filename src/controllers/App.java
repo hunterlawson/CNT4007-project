@@ -8,7 +8,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.stream.Collectors;
 
 public class App {
     private static App instance = null;
@@ -34,7 +33,7 @@ public class App {
     ArrayList<Peer> peers = new ArrayList<>();
 
     // Bitfield - used to store what pieces this peer has
-    BitSet bitField;
+    BitSet bitfield;
 
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
@@ -44,16 +43,16 @@ public class App {
         // Calculate the total number of pieces = ceil(fileSize / pieceSize)
         this.numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
         // Initialize the bitField with the corresponding number of bits
-        this.bitField = new BitSet(this.numPieces);
+        this.bitfield = new BitSet(this.numPieces);
 
         // If this peer has the entire file, then the bitField is all 1's
         if(this.thisPeer.hasFile) {
-            bitField.set(0, bitField.length());
+            bitfield.set(0, bitfield.length());
         }
 
         System.out.println("This peer has the bitfield: ");
-        for(int i = 0; i < bitField.length(); i++) {
-            System.out.print(bitField.get(i));
+        for(int i = 0; i < bitfield.length(); i++) {
+            System.out.print(bitfield.get(i));
         }
     }
 
