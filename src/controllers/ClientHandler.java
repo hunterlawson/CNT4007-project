@@ -14,9 +14,11 @@ public class ClientHandler extends Thread {
     Socket socket;
     DataInputStream inStream;
     DataOutputStream outStream;
+    PeerLogger logger;
+    boolean choked = true;
 
     public ClientHandler(Peer thisPeer, Peer targetPeer,
-                         Socket socket, DataInputStream inStream, DataOutputStream outStream) throws Exception {
+                         Socket socket, DataInputStream inStream, DataOutputStream outStream, PeerLogger logger) throws Exception {
         this.thisPeer = thisPeer;
         this.targetPeer = targetPeer;
         this.socket = socket;
@@ -59,19 +61,46 @@ public class ClientHandler extends Thread {
 
             sendMessage(this.outStream, sendInterestMessage);
 
-            // Receive interest messages
-            Message receiveInterestMessage = receiveMessage(this.inStream);
-            switch(receiveInterestMessage.getType()) {
-                case INTERESTED: {
-                    System.out.println("Received INTERESTED message from: " + this.targetPeer.getId());
-                    break;
-                }
-                case NOT_INTERESTED: {
-                    System.out.println("Received NOT_INTERESTED message from: " + this.targetPeer.getId());
-                    break;
+            // Receive and handle all messages
+            while(App.running) {
+                Message receivedMessage = receiveMessage(this.inStream);
+                switch (receivedMessage.getType()) {
+                    case INTERESTED -> {
+                        System.out.println("Received INTERESTED message from: " + targetId);
+                        // Mark the neighbor peer as interested
+                        App.interestedNeighbors.put(targetId, true);
+                    }
+                    case NOT_INTERESTED -> {
+                        System.out.println("Received NOT_INTERESTED message from: " + targetId);
+                        // Mark the neighbor peer as not interested
+                        App.interestedNeighbors.put(targetId, false);
+                    }
+                    case CHOKE -> {
+                        System.out.println("Received CHOKE message from: " + targetId);
+                        this.choked = true;
+                        App.neighbors.put(targetId, true);
+                    }
+                    case UNCHOKE -> {
+                        System.out.println("Received UNCHOKE message from: " + targetId);
+                        this.choked = false;
+                        App.neighbors.put(targetId, false);
+                    }
+                    case REQUEST -> {
+                        System.out.println("Received REQUEST message from: " + targetId);
+                        // Send the requested piece
+                        int pieceIndex = ByteBuffer.wrap(receivedMessage.getPayloadBytes()).getInt();
+                        byte[] pieceBytes = new byte[0];
+                    }
+                    case HAVE -> {
+                        // Update the bitfield for the peer with the piece index that it has
+                        System.out.println("Received HAVE message from: " + targetId);
+                        BitSet targetBitfield = App.bitfieldMap.get(targetId);
+                        int pieceIndex = ByteBuffer.wrap(receivedMessage.getPayloadBytes()).getInt();
+                        targetBitfield.set(pieceIndex);
+                        App.bitfieldMap.put(targetId, targetBitfield);
+                    }
                 }
             }
-
         } catch(Exception e) {
             System.out.println("Error running the client handler thread: " + e.toString());
         }

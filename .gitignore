@@ -3,3 +3,4 @@ Common.cfg
 PeerInfo.cfg
 .idea/
 CNT4007-project.iml
+*.log

@@ -13,7 +13,10 @@ import java.util.HashMap;
 public class App {
     private static App instance = null;
     public static boolean running = true;
-    public static ArrayList<Peer> neighbors = new ArrayList<>();
+
+    // Store the peerId and a boolean that represents if the neighbor is choked or not
+    public static HashMap<Integer, Boolean> neighbors = new HashMap<>();
+    public static HashMap<Integer, Boolean> interestedNeighbors = new HashMap<>();
     public static HashMap<Integer, BitSet> bitfieldMap = new HashMap<>();
 
     PeerLogger logger;
@@ -23,7 +26,7 @@ public class App {
     static final String PEER_INFO_FILENAME = "PeerInfo.cfg";
 
     // Config variables
-    int numPreferredNeighbors;
+    static int numPreferredNeighbors;
     int unchokingInterval;
     int optimisticChokingInterval;
     String filename;
@@ -58,7 +61,7 @@ public class App {
         }
 
         // Calculate the total number of pieces = ceil(fileSize / pieceSize)
-        this.numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
+        numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
 
         // Insert this peer's bitfield into the bitfieldMap
         BitSet thisBitfield = new BitSet(numPieces);
@@ -222,7 +225,7 @@ public class App {
             // Otherwise, we have established a proper connection
             // Spawn a handler thread to handle further interactions with the other peer
             ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
-                    socket, inputStream, outputStream);
+                    socket, inputStream, outputStream, logger);
 
             clientHandler.start();
         }
@@ -260,7 +263,7 @@ public class App {
             // We've now established a connection
             // Spawn a handler thread to handle the rest of the connection
             ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
-                    socket, inputStream, outputStream);
+                    socket, inputStream, outputStream, logger);
 
             clientHandler.start();
         }
