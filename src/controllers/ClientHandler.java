@@ -16,8 +16,10 @@ public class ClientHandler extends Thread {
     DataInputStream inStream;
     DataOutputStream outStream;
 
+    PeerLogger logger;
+
     public ClientHandler(Peer thisPeer, Peer targetPeer, BitSet bitfield,
-                         Socket socket, DataInputStream inStream, DataOutputStream outStream) throws Exception {
+                         Socket socket, DataInputStream inStream, DataOutputStream outStream, PeerLogger logger) throws Exception {
         this.thisPeer = thisPeer;
         this.targetPeer = targetPeer;
         this.socket = socket;
@@ -25,6 +27,8 @@ public class ClientHandler extends Thread {
 
         this.inStream = inStream;
         this.outStream = outStream;
+
+        this.logger = logger;
     }
 
     @Override
@@ -39,6 +43,7 @@ public class ClientHandler extends Thread {
             Message receiveBitfieldMessage = receiveMessage(inStream);
             this.targetBitfield = receiveBitfieldMessage.getBitfield();
             System.out.println("Received bitfield: " + this.targetBitfield.toString());
+            logger.writeLog("Peer " + thisPeer.id + " received bitfield from " + targetPeer.id);
         } catch(Exception e) {
             System.out.println("Error running the client handler thread: " + e.toString());
         }
