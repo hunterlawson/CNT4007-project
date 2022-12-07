@@ -1,5 +1,7 @@
 package models.messages;
 
+import exceptions.InvalidMessageException;
+
 import java.nio.ByteBuffer;
 
 public class HandshakeMessage {
@@ -9,6 +11,19 @@ public class HandshakeMessage {
 
     public HandshakeMessage(int peerId) {
         this.peerId = peerId;
+    }
+
+    // Construct a handshake message from a byte array
+    public HandshakeMessage(byte[] bytes) throws InvalidMessageException {
+        // The peer ID is stored in the last 4 bytes
+        try {
+            ByteBuffer peerIdBuffer = ByteBuffer.wrap(bytes, bytes.length - 4, 4);
+            // Convert the bytes into the integer representation
+            this.peerId = peerIdBuffer.getInt();
+
+        } catch(Exception e) {
+            throw new InvalidMessageException("Cannot create a handshake message out of given bytes", e);
+        }
     }
 
     public int getPeerId() {

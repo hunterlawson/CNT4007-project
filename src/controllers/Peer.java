@@ -6,11 +6,7 @@ public class Peer implements Comparable<Peer> {
     String hostname;
     int port;
     boolean hasFile;
-
-
-
     boolean choked = false;
-
     double downloadRate;
 
     public Peer(int id, String hostname, int port, boolean hasFile) {
