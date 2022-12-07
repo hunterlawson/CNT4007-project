@@ -21,6 +21,9 @@ public class App {
 
     PeerLogger logger;
 
+    //file object
+    public RandomAccessFile peerFile;
+
     // File names
     static final String COMMON_CONFIG_FILENAME = "Common.cfg";
     static final String PEER_INFO_FILENAME = "PeerInfo.cfg";
@@ -176,6 +179,37 @@ public class App {
     void sendHandshakeMessage(DataOutputStream outStream, HandshakeMessage message) throws Exception {
         outStream.write(message.getMessageBytes());
         outStream.flush();
+    }
+
+    public void newPeerFile() throws FileNotFoundException {
+        String pathName = "peer_" + thisPeer.id;
+        File newPeerDirectory = new File(pathName);
+        newPeerDirectory.mkdir();
+        RandomAccessFile peerFile = new RandomAccessFile(newPeerDirectory.getAbsolutePath() + "/" + this.filename, "rw");
+    }
+
+    public synchronized byte[] readData(int pieceNumber) throws IOException {
+        int startPosition = pieceNumber * pieceSize;
+        byte[] pieceBytes;
+        if(fileSize % numPieces != 0){
+            pieceBytes = new byte[fileSize % numPieces];
+        } else {
+            pieceBytes = new byte[pieceSize];
+        }
+        peerFile.seek(startPosition);
+        for(int i = 0; i < pieceBytes.length; i++){
+            pieceBytes[i] = peerFile.readByte();
+        }
+        return pieceBytes;
+    }
+
+    public synchronized void writeData(int pieceNumber, byte[] pieceBytes) throws IOException {
+        int startingPosition = pieceNumber * pieceBytes.length;
+        peerFile.seek(startingPosition);
+        for(int i = 0; i < pieceBytes.length; i++){
+            peerFile.writeByte(pieceBytes[i]);
+        }
+        this.thisPeer.bitfield.set(pieceNumber);
     }
 
     // Run the peer application
