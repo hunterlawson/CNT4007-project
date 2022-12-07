@@ -4,46 +4,57 @@ import exceptions.AppConfigException;
 import models.messages.HandshakeMessage;
 
 import java.io.*;
-import java.io.File;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.io.File;
 
 public class App {
     private static App instance = null;
+    public static boolean running = true;
+
+    // Store the peerId and a boolean that represents if the neighbor is choked or not
+    public static HashMap<Integer, Boolean> neighbors = new HashMap<>();
+    public static HashMap<Integer, Boolean> interestedNeighbors = new HashMap<>();
+    public static HashMap<Integer, BitSet> bitfieldMap = new HashMap<>();
+
+    PeerLogger logger;
+
+    //file object
+    static public RandomAccessFile file;
 
     // File names
     static final String COMMON_CONFIG_FILENAME = "Common.cfg";
     static final String PEER_INFO_FILENAME = "PeerInfo.cfg";
 
     // Config variables
-    int numPreferredNeighbors;
+    static int numPreferredNeighbors;
     int unchokingInterval;
     int optimisticChokingInterval;
     String filename;
-    int fileSize;
-    int pieceSize;
+    static int fileSize;
+    static int pieceSize;
     // Total number of pieces needed to download the entire file
-    int numPieces;
-
-    //file object
-    public RandomAccessFile peerFile;
+    static int numPieces;
 
     // This application's peer information
     Peer thisPeer = null;
 
+    //file object
+    public RandomAccessFile peerFile;
+
     // Peer data
     ArrayList<Peer> peers = new ArrayList<>();
 
-    // Bitfield - used to store what pieces this peer has
-    //BitSet bitfield;
-
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
-    private App(int peerId) throws AppConfigException {
+    private App(int peerId) throws AppConfigException, IOException {
         // Read in the config file data and store it in the app
         readConfigFiles();
+
+        logger = new PeerLogger(peerId);
 
         // Set the current peer using the peerId passed in and searching the list of peers given in the file
         for(Peer p : peers) {
@@ -57,18 +68,29 @@ public class App {
         }
 
         // Calculate the total number of pieces = ceil(fileSize / pieceSize)
-        this.numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
-        // Initialize the bitField with the corresponding number of bits
-        this.thisPeer.bitfield = new BitSet(this.numPieces);
+        numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
+
+        // Insert this peer's bitfield into the bitfieldMap
+        BitSet thisBitfield = new BitSet(numPieces);
         // If this peer has the entire file, then the bitField is all 1's
         if(this.thisPeer.hasFile) {
-            this.thisPeer.bitfield.set(0, this.thisPeer.bitfield.length());
+            thisBitfield.set(0, thisBitfield.size());
+        }
+        bitfieldMap.put(this.thisPeer.getId(), thisBitfield);
+
+
+        for(Peer p : peers){
+            newPeerFile(this.thisPeer);
         }
 
-        System.out.println("This peer has the bitfield: ");
-        for(int i = 0; i < this.thisPeer.bitfield.length(); i++) {
-            System.out.print(this.thisPeer.bitfield.get(i));
+        /*
+        byte[] pieceData;
+        if(thisPeer.hasFile){
+            for(int i = 0; i < numPieces; i++){
+                pieceData = readData(i);
+            }
         }
+         */
     }
 
     // Performs any validation of configuration files and throws any errors that might occur
@@ -148,7 +170,7 @@ public class App {
         String[] values = data.split(" ");
 
         // Verify that there is the correct number of values in the data string
-        if(values.length != 5) {
+        if(values.length != 4) {
             throw new AppConfigException("Incorrect amount of values given for peer");
         }
 
@@ -157,22 +179,34 @@ public class App {
         String hostName = values[1];
         int port = Integer.parseInt(values[2]);
         boolean hasFile = Integer.parseInt(values[3]) == 0 ? false : true;
-        BitSet bitfield = new BitSet();
 
         return new Peer(
                 peerId,
                 hostName,
                 port,
-                hasFile,
-                bitfield
+                hasFile
         );
     }
 
-    public void newPeerFile() throws FileNotFoundException {
-        String pathName = "peer_" + thisPeer.id;
-        File newPeerDirectory = new File(pathName);
-        newPeerDirectory.mkdir();
-        RandomAccessFile peerFile = new RandomAccessFile(newPeerDirectory.getAbsolutePath() + "/" + this.filename, "rw");
+    HandshakeMessage receiveHandshakeMessage(DataInputStream inStream) throws Exception {
+        // Handshake messages are always 32 bytes in size
+        byte[] messageBytes = inStream.readNBytes(32);
+        return new HandshakeMessage(messageBytes);
+    }
+
+    void sendHandshakeMessage(DataOutputStream outStream, HandshakeMessage message) throws Exception {
+        outStream.write(message.getMessageBytes());
+        outStream.flush();
+    }
+
+    public void newPeerFile(Peer thisPeer) throws FileNotFoundException {
+        File newPeerDirectory = new File("peer_" + thisPeer.id + "/");
+        if(!newPeerDirectory.exists()) {
+            newPeerDirectory.mkdirs();
+            File newFile = new File(filename);
+        }
+        file = new RandomAccessFile("peer_" + thisPeer.id + "/" + filename, "rw");
+        //System.out.println("file created");
     }
 
     public synchronized byte[] readData(int pieceNumber) throws IOException {
@@ -183,73 +217,115 @@ public class App {
         } else {
             pieceBytes = new byte[pieceSize];
         }
-        peerFile.seek(startPosition);
+        if(!thisPeer.hasFile){
+            return pieceBytes;
+        }
+        file.seek(startPosition);
         for(int i = 0; i < pieceBytes.length; i++){
-            pieceBytes[i] = peerFile.readByte();
+            pieceBytes[i] = file.readByte();
+            System.out.println(pieceBytes[i]);
         }
         return pieceBytes;
     }
 
     public synchronized void writeData(int pieceNumber, byte[] pieceBytes) throws IOException {
         int startingPosition = pieceNumber * pieceBytes.length;
-        peerFile.seek(startingPosition);
+        file.seek(startingPosition);
         for(int i = 0; i < pieceBytes.length; i++){
-            peerFile.writeByte(pieceBytes[i]);
+            file.writeByte(pieceBytes[i]);
+            System.out.println(pieceBytes[i]);
         }
-        this.thisPeer.bitfield.set(pieceNumber);
     }
+
 
     // Run the peer application
     // Spawn additional client/server threads and handle incoming connections
     // Choke/unchoke connections as necessary
     public void run() throws Exception {
-//        Client client;
-//        Server server;
-
-        HandshakeMessage handshakeMessage = new HandshakeMessage(thisPeer.id);
-
         // Get all peers that started before this peer
-        ArrayList<Peer> connections = new ArrayList<>();
+        ArrayList<Peer> previousPeers = new ArrayList<>();
         for(Peer p : peers) {
             if(p.id != thisPeer.id) {
-                connections.add(p);
+                previousPeers.add(p);
             } else {
                 break;
             }
         }
 
-        // Connect to peers (if there are any)
-        System.out.println("Connecting to " + connections.size() +  " peers");
-        for(int i = 0; i < connections.size(); i++) {
-            Client clientThread = new Client();
+        // Connect to all previous peers (if there are any)
+        System.out.println("Connecting to " + previousPeers.size() +  " peers");
+        for(int i = 0; i < previousPeers.size(); i++) {
+            Peer targetPeer = previousPeers.get(i);
 
-            clientThread.start();
+            // Connect to the target peer
+            Socket socket = new Socket(targetPeer.hostname, targetPeer.port);
+            System.out.println("Connected to peer ID: " + targetPeer.getId() + " on port: " + targetPeer.getPort());
+            logger.writeLog("Peer " + this.thisPeer.id + " makes a connection to Peer " + targetPeer.id);
+
+            // Create the data output and input streams
+            DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+            DataInputStream inputStream = new DataInputStream(socket.getInputStream());
+
+            // Send the handshake message
+            HandshakeMessage sendHandshake = new HandshakeMessage(thisPeer.getId());
+            sendHandshakeMessage(outputStream, sendHandshake);
+            System.out.println("Handshake sent to peer ID: " + targetPeer.getId());
+
+            // Wait for a response handshake message
+            HandshakeMessage receiveHandshake = receiveHandshakeMessage(inputStream);
+            int targetId = receiveHandshake.getPeerId();
+            System.out.println("Received handshake from peer ID: " + targetId);
+            logger.writeLog("Peer " + this.thisPeer.id + " received handshake from " + targetId);
+            // Check that the ID from the response handshake is correct
+            if(receiveHandshake.getPeerId() != targetPeer.getId()) {
+                System.out.println("The response handshake ID does not match!");
+                return;
+            }
+
+            // Otherwise, we have established a proper connection
+            // Spawn a handler thread to handle further interactions with the other peer
+            ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
+                    socket, inputStream, outputStream, logger);
+
+            clientHandler.start();
         }
 
-        // Listen for peers
-        ServerSocket serverSocket = new ServerSocket(6969);
-        while(true) {
-            Socket connectionSocket = serverSocket.accept();
-            DataInputStream inputStream = new DataInputStream(connectionSocket.getInputStream());
+        // Peer server connection listener
+        System.out.println("Starting server socket listener...");
+        ServerSocket serverSocket = new ServerSocket(this.thisPeer.port);
 
-            // The first message should be a handshake - attempt to construct a handshake message
-            byte[] messageBytes = inputStream.readAllBytes();
+        while(running) {
+            Socket socket = serverSocket.accept();
+            System.out.println("Accepted TCP connection");
 
-            System.out.println("Received " + messageBytes.length + " bytes");
+            DataInputStream inputStream = new DataInputStream(socket.getInputStream());
+            DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
 
-            // DEBUG print out the bytes
-            String hex = "";
-            for(byte b : messageBytes) {
-                hex += String.format("%02X", b);
+            // Receive handshake messages from other peers
+            HandshakeMessage receiveHandshake = receiveHandshakeMessage(inputStream);
+            int targetId = receiveHandshake.getPeerId();
+            System.out.println("Handshake message received from peer with ID: " + targetId);
+            logger.writeLog("Peer " + this.thisPeer.id + " received handshake from " + targetId);
+            // Send a response handshake
+            System.out.println("Sending a handshake to peer with ID: " + receiveHandshake.getPeerId());
+            HandshakeMessage sendHandshake = new HandshakeMessage(this.thisPeer.getId());
+            sendHandshakeMessage(outputStream, sendHandshake);
+
+            // Get the peer associated with the peerID in the handshake message
+            Peer targetPeer = this.thisPeer;
+            for(Peer peer : peers) {
+                if(peer.getId() == receiveHandshake.getPeerId()) {
+                    targetPeer = peer;
+                    break;
+                }
             }
-            System.out.println(hex);
 
-            try {
-                HandshakeMessage hsMessage = new HandshakeMessage(messageBytes);
-                System.out.println("Connected with client ID: " + hsMessage.getPeerId());
-            } catch(Exception e) {
-                throw e;
-            }
+            // We've now established a connection
+            // Spawn a handler thread to handle the rest of the connection
+            ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
+                    socket, inputStream, outputStream, logger);
+
+            clientHandler.start();
         }
     }
 }
