@@ -22,7 +22,7 @@ public class App {
     PeerLogger logger;
 
     //file object
-    public RandomAccessFile peerFile;
+    static public RandomAccessFile file;
 
     // File names
     static final String COMMON_CONFIG_FILENAME = "Common.cfg";
@@ -185,7 +185,7 @@ public class App {
         String pathName = "peer_" + thisPeer.id;
         File newPeerDirectory = new File(pathName);
         newPeerDirectory.mkdir();
-        RandomAccessFile peerFile = new RandomAccessFile(newPeerDirectory.getAbsolutePath() + "/" + this.filename, "rw");
+        file = new RandomAccessFile(newPeerDirectory.getAbsolutePath() + "/" + this.filename, "rw");
     }
 
     public synchronized byte[] readData(int pieceNumber) throws IOException {
@@ -196,20 +196,19 @@ public class App {
         } else {
             pieceBytes = new byte[pieceSize];
         }
-        peerFile.seek(startPosition);
+        file.seek(startPosition);
         for(int i = 0; i < pieceBytes.length; i++){
-            pieceBytes[i] = peerFile.readByte();
+            pieceBytes[i] = file.readByte();
         }
         return pieceBytes;
     }
 
     public synchronized void writeData(int pieceNumber, byte[] pieceBytes) throws IOException {
         int startingPosition = pieceNumber * pieceBytes.length;
-        peerFile.seek(startingPosition);
+        file.seek(startingPosition);
         for(int i = 0; i < pieceBytes.length; i++){
-            peerFile.writeByte(pieceBytes[i]);
+            file.writeByte(pieceBytes[i]);
         }
-        this.thisPeer.bitfield.set(pieceNumber);
     }
 
     // Run the peer application
