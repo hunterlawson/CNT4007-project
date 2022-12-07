@@ -6,6 +6,7 @@ import models.messages.HandshakeMessage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -46,7 +47,7 @@ public class App {
 
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
-    private App(int peerId) throws AppConfigException {
+    private App(int peerId) throws Exception {
         // Read in the config file data and store it in the app
         readConfigFiles();
 
@@ -73,6 +74,9 @@ public class App {
             thisBitfield.set(0, thisBitfield.size());
         }
         bitfieldMap.put(this.thisPeer.getId(), thisBitfield);
+
+        // Create this peer's file
+        newPeerFile(this.thisPeer);
     }
 
     // Performs any validation of configuration files and throws any errors that might occur
@@ -181,34 +185,41 @@ public class App {
         outStream.flush();
     }
 
-    public void newPeerFile() throws FileNotFoundException {
-        String pathName = "peer_" + thisPeer.id;
-        File newPeerDirectory = new File(pathName);
-        newPeerDirectory.mkdir();
-        file = new RandomAccessFile(newPeerDirectory.getAbsolutePath() + "/" + this.filename, "rw");
+    public void newPeerFile(Peer thisPeer) throws Exception {
+        File newPeerDirectory = new File("peer_" + thisPeer.id + "/");
+        if(!newPeerDirectory.exists()) {
+            newPeerDirectory.mkdirs();
+        }
+        file = new RandomAccessFile("peer_" + thisPeer.id + "/" + filename, "rw");
+
+        System.out.println("file created");
     }
 
-    public synchronized byte[] readData(int pieceNumber) throws IOException {
-        int startPosition = pieceNumber * pieceSize;
+    public static synchronized byte[] readData(int pieceIndex) throws IOException {
+        int startPosition = pieceIndex * pieceSize;
         byte[] pieceBytes;
-        if(fileSize % numPieces != 0){
+        if(pieceIndex == numPieces - 1){
             pieceBytes = new byte[fileSize % numPieces];
         } else {
             pieceBytes = new byte[pieceSize];
         }
+
+        System.out.println("Reading file: " + pieceBytes.length);
+
         file.seek(startPosition);
-        for(int i = 0; i < pieceBytes.length; i++){
-            pieceBytes[i] = file.readByte();
+        ByteBuffer dataBuffer = ByteBuffer.allocate(pieceBytes.length);
+        for(int i = 0; i < pieceBytes.length; i++) {
+            dataBuffer.put(file.readByte());
         }
-        return pieceBytes;
+        //System.out.println(pieceBytes[i]);
+
+        return dataBuffer.array();
     }
 
-    public synchronized void writeData(int pieceNumber, byte[] pieceBytes) throws IOException {
-        int startingPosition = pieceNumber * pieceBytes.length;
+    public static synchronized void writeData(int pieceIndex, byte[] pieceBytes) throws IOException {
+        int startingPosition = pieceIndex * pieceSize;
         file.seek(startingPosition);
-        for(int i = 0; i < pieceBytes.length; i++){
-            file.writeByte(pieceBytes[i]);
-        }
+        file.write(pieceBytes, 0, pieceBytes.length);
     }
 
     // Run the peer application
