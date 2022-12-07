@@ -1,8 +1,9 @@
 package models.messages;
 
-import exceptions.InvalidMessageException;
+import exceptions.InvalidHandshakeException;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class HandshakeMessage {
     final static String HEADER = "P2PFILESHARINGPROJ";
@@ -14,16 +15,19 @@ public class HandshakeMessage {
     }
 
     // Construct a handshake message from a byte array
-    public HandshakeMessage(byte[] bytes) throws InvalidMessageException {
-        // The peer ID is stored in the last 4 bytes
-        try {
-            ByteBuffer peerIdBuffer = ByteBuffer.wrap(bytes, bytes.length - 4, 4);
-            // Convert the bytes into the integer representation
-            this.peerId = peerIdBuffer.getInt();
-
-        } catch(Exception e) {
-            throw new InvalidMessageException("Cannot create a handshake message out of given bytes", e);
+    public HandshakeMessage(byte[] bytes) throws InvalidHandshakeException {
+        // Check that the handshake header is correct
+        ByteBuffer headerBuffer = ByteBuffer.allocate(18);
+        byte[] headerBytes = headerBuffer.put(bytes, 0, 18).array();
+        String headerString = new String(headerBytes, StandardCharsets.UTF_8);
+        if(!headerString.equals(HEADER)) {
+            throw new InvalidHandshakeException(headerString + " does not equal: " + HEADER);
         }
+
+        // The peer ID is stored in the last 4 bytes
+        ByteBuffer peerIdBuffer = ByteBuffer.wrap(bytes, bytes.length - 4, 4);
+        // Convert the bytes into the integer representation
+        this.peerId = peerIdBuffer.getInt();
     }
 
     public int getPeerId() {

@@ -53,8 +53,9 @@ public class Message {
         }
     }
 
+    // Make a bitfield message out of the given bitfield stored in a BitSet
     public static Message makeBitfieldMessage(BitSet bitfield) throws InvalidMessageException {
-        byte[] payload = new byte[(bitfield.length() + 7) / 8];
+        byte[] payload = new byte[(bitfield.size() + 7) / 8];
         for(int i = 0; i < payload.length; i++) {
             byte b = 0;
             for(int j = 0; j < 8; j++) {
@@ -70,10 +71,23 @@ public class Message {
         return new Message(MessageType.BITFIELD, payload);
     }
 
+    public BitSet getBitfield() {
+        // Create a BitSet object to represent the payload which should be another bitfield
+        BitSet bitfield = new BitSet();
+        for (int i = 0; i < this.payload.length * 8; i++) {
+            if ((this.payload[i / 8] & (1 << (7 - i % 8))) > 0) {
+                bitfield.set(i);
+            }
+        }
+        return bitfield;
+    }
+
+    // Get the enum type of the message
     public MessageType getType() {
         return MessageType.values()[type];
     }
 
+    // Get the byte representation of the message type
     public byte getTypeBytes() {
         return type;
     }
@@ -84,10 +98,8 @@ public class Message {
         return this.payload;
     }
 
-    /*
-        Validates the message that can be created with the given inputs.
-        Throws an InvalidMessage exception if the arguments do not make a valid exception
-     */
+    // Validates the message that can be created with the given inputs.
+    // Throws an InvalidMessage exception if the arguments do not make a valid exception
     public static void validateMessage(MessageType type, byte[] payload) throws InvalidMessageException {
         // Validate that the message type has the correct payload size
         switch(type) {

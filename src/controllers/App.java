@@ -173,47 +173,50 @@ public class App {
         HandshakeMessage handshakeMessage = new HandshakeMessage(thisPeer.id);
 
         // Get all peers that started before this peer
-        ArrayList<Peer> connections = new ArrayList<>();
+        ArrayList<Peer> previousPeers = new ArrayList<>();
         for(Peer p : peers) {
             if(p.id != thisPeer.id) {
-                connections.add(p);
+                previousPeers.add(p);
             } else {
                 break;
             }
         }
 
         // Connect to peers (if there are any)
-        System.out.println("Connecting to " + connections.size() +  " peers");
-        for(int i = 0; i < connections.size(); i++) {
-            Client clientThread = new Client();
+        System.out.println("Connecting to " + previousPeers.size() +  " peers");
+        for(int i = 0; i < previousPeers.size(); i++) {
+            Client clientThread = new Client(this.thisPeer, previousPeers.get(i), this.bitfield);
 
             clientThread.start();
         }
 
+        System.out.println("Starting server socket listener...");
         // Listen for peers
-        ServerSocket serverSocket = new ServerSocket(6969);
-        while(true) {
-            Socket connectionSocket = serverSocket.accept();
-            DataInputStream inputStream = new DataInputStream(connectionSocket.getInputStream());
+        ServerSocket serverSocket = new ServerSocket(this.thisPeer.port);
 
-            // The first message should be a handshake - attempt to construct a handshake message
-            byte[] messageBytes = inputStream.readAllBytes();
+        Socket connectionSocket = serverSocket.accept();
+        DataInputStream inputStream = new DataInputStream(connectionSocket.getInputStream());
+        DataOutputStream outputStream = new DataOutputStream(connectionSocket.getOutputStream());
 
-            System.out.println("Received " + messageBytes.length + " bytes");
+        // Receive handshake messages from other peers
+        byte[] messageBytes = inputStream.readAllBytes();
 
-            // DEBUG print out the bytes
-            String hex = "";
-            for(byte b : messageBytes) {
-                hex += String.format("%02X", b);
-            }
-            System.out.println(hex);
+        System.out.println("Received " + messageBytes.length + " bytes");
 
-            try {
-                Message message = new Message(messageBytes);
-                System.out.println("Received message of type: " + message.getType().name());
-            } catch(Exception e) {
-                throw e;
-            }
+        // DEBUG print out the bytes
+        String hex = "";
+        for(byte b : messageBytes) {
+            hex += String.format("%02X", b);
         }
+        System.out.println(hex);
+
+        HandshakeMessage receiveHandshake = new HandshakeMessage(messageBytes);
+        System.out.println("Handshake message received from peer with ID: " + receiveHandshake.getPeerId());
+
+        // Send a response handshake
+        System.out.println("Sending a handshake to peer with ID: " + receiveHandshake.getPeerId());
+        HandshakeMessage sendHandshake = new HandshakeMessage(this.thisPeer.getId());
+        outputStream.write(sendHandshake.getMessageBytes());
+        outputStream.flush();
     }
 }

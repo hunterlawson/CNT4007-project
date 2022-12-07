@@ -1,47 +1,55 @@
 package controllers;
 
+import models.messages.HandshakeMessage;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.lang.*;
 
 public class Client extends Thread {
-//    public void main() throws Exception {
-//
-//        //sample values to test functionality
-//
-//        int peerID = 1000;
-//        String hostName = "";
-//        int listeningPort = 6789;
-//        boolean hasFile = false;
-//        int numOfNeighbors = 0;
-//        String sentence;
-//        String modifiedSentence;
-//
-//        //reads in the user input
-//        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
-//
-//        //creates a socket for the client
-//        Socket clientSocket = new Socket(hostName, listeningPort);
-//
-//        //outputs the data from the client to the server and reads in the new data
-//        DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-//        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-//
-//
-//        sentence = inFromUser.readLine();
-//        outToServer.writeBytes(sentence + '\n');
-//        modifiedSentence = inFromServer.readLine();
-//
-//        //prints out the new data
-//        System.out.println("FROM SERVER: " + modifiedSentence);
-//
-//        //closes the client socket
-//        clientSocket.close();
-//    }
+    Peer thisPeer, targetPeer;
+    BitSet bitfield;
+    Socket socket;
+
+    public Client(Peer thisPeer, Peer targetPeer, BitSet bitfield) {
+        this.thisPeer = thisPeer;
+        this.targetPeer = targetPeer;
+        this.bitfield = bitfield;
+    }
 
     @Override
     public void run() {
-        System.out.println("Ran the client thread");
+        // Create a socket to the other peer's server listener
+        try {
+            this.socket = new Socket(targetPeer.hostname, targetPeer.port);
+            System.out.println("Connected to peer ID: " + targetPeer.getId() + " on port: " + targetPeer.getPort());
+
+            // Create the data output and input streams
+            DataOutputStream outputStream = new DataOutputStream(this.socket.getOutputStream());
+            DataInputStream inputStream = new DataInputStream(this.socket.getInputStream());
+
+            // Send the handshake message
+            HandshakeMessage sendHandshake = new HandshakeMessage(thisPeer.getId());
+            outputStream.write(sendHandshake.getMessageBytes());
+            outputStream.flush();
+            System.out.println("Handshake sent");
+
+            // Get the response handshake
+//            System.out.println("Awaiting response handshake");
+//            byte[] messageBytes = inputStream.readAllBytes();
+//            HandshakeMessage receiveHandshake = new HandshakeMessage(messageBytes);
+//
+//            System.out.println("Received handshake from peer ID: " + receiveHandshake.getPeerId());
+
+            socket.close();
+        } catch(Exception e) {
+            System.out.println("Error sending the handshake: " + e.getMessage());
+            return;
+        }
+    }
+
+    public Socket getSocket() {
+        return this.socket;
     }
 }
