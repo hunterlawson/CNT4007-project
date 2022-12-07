@@ -2,6 +2,7 @@ package controllers;
 
 import exceptions.AppConfigException;
 import models.messages.HandshakeMessage;
+import models.messages.Message;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -208,8 +209,8 @@ public class App {
             System.out.println(hex);
 
             try {
-                HandshakeMessage hsMessage = new HandshakeMessage(messageBytes);
-                System.out.println("Connected with client ID: " + hsMessage.getPeerId());
+                Message message = new Message(messageBytes);
+                System.out.println("Received message of type: " + message.getType().name());
             } catch(Exception e) {
                 throw e;
             }

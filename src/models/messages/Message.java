@@ -26,6 +26,15 @@ public class Message {
         this.payload = payload;
     }
 
+    // Construct a message with the given type and no payload
+    public Message(MessageType type) throws InvalidMessageException {
+        this.payload = new byte[0];
+
+        validateMessage(type, this.payload);
+
+        this.type = (byte) type.ordinal();
+    }
+
     // Construct a message from the give bytes
     public Message(byte[] bytes) throws InvalidMessageException {
         // Get the message type field
@@ -35,7 +44,8 @@ public class Message {
         }
         this.type = messageTypeByte;
 
-        int payloadLength = ByteBuffer.wrap(bytes, 0, 4).getInt() - 1;
+        // Initialize the payload byte array
+        int payloadLength = ByteBuffer.wrap(bytes, 0, 4).getInt();
         this.payload = new byte[payloadLength];
         for(int i = 0; i < payloadLength; i++) {
             this.payload[i] = bytes[5 + i];
@@ -50,8 +60,10 @@ public class Message {
         return type;
     }
 
-    public byte[] getPayload() {
-        return payload;
+    // Return the payload as a byte array
+    // If they payload is empty (null), return an empty byte array
+    public byte[] getPayloadBytes() {
+        return this.payload;
     }
 
     /*
@@ -65,7 +77,7 @@ public class Message {
             case UNCHOKE:
             case INTERESTED:
             case NOT_INTERESTED: {
-                if (payload.length != 0) {
+                if (payload.length == 0) {
                     throw new InvalidMessageException(type.toString() + " messages require an empty payload");
                 }
                 break;
@@ -91,21 +103,24 @@ public class Message {
         // Messages consist of:
         // 4 byte length
         // 1 byte type
-        // variable length payload
-        byte[] messageBytes = new byte[4 + 1 + payload.length];
+
+        // Get the length of the payload and initialize the byte array
+        int payloadLength = this.payload.length;
+        byte[] messageBytes = new byte[4 + 1 + payloadLength];
 
         // Add the 4-byte payload length
-        byte[] payloadLengthBytes = ByteBuffer.allocate(4).putInt(payload.length).array();
+        byte[] payloadLengthBytes = ByteBuffer.allocate(4).putInt(payloadLength).array();
+
         for(int i = 0; i < 4; i++) {
             messageBytes[i] = payloadLengthBytes[i];
         }
 
         // Add the 1-byte message type
-        messageBytes[4] = type;
+        messageBytes[4] = this.type;
 
-        // Add the variable byte payload
-        for(int i = 6; i < 6 + payload.length; i++) {
-            messageBytes[i] = payload[i - 6];
+        // Add the variable byte payload (can be nothing)
+        for(int i = 5; i < 5 + payloadLength; i++) {
+            messageBytes[i] = this.payload[i - 5];
         }
 
         return messageBytes;
