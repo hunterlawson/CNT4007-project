@@ -264,10 +264,10 @@ public class App {
         }
 
         // Peer server connection listener
-        System.out.println("Starting server socket listener...");
         ServerSocket serverSocket = new ServerSocket(this.thisPeer.port);
 
         while(running) {
+            System.out.println("Starting server socket listener...");
             Socket socket = serverSocket.accept();
             System.out.println("Accepted TCP connection");
 
