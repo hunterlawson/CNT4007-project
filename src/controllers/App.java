@@ -4,6 +4,7 @@ import exceptions.AppConfigException;
 import models.messages.HandshakeMessage;
 
 import java.io.*;
+import java.io.File;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -26,6 +27,9 @@ public class App {
     // Total number of pieces needed to download the entire file
     int numPieces;
 
+    //file object
+    public RandomAccessFile peerFile;
+
     // This application's peer information
     Peer thisPeer = null;
 
@@ -33,7 +37,7 @@ public class App {
     ArrayList<Peer> peers = new ArrayList<>();
 
     // Bitfield - used to store what pieces this peer has
-    BitSet bitfield;
+    //BitSet bitfield;
 
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
@@ -55,15 +59,15 @@ public class App {
         // Calculate the total number of pieces = ceil(fileSize / pieceSize)
         this.numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
         // Initialize the bitField with the corresponding number of bits
-        this.bitfield = new BitSet(this.numPieces);
+        this.thisPeer.bitfield = new BitSet(this.numPieces);
         // If this peer has the entire file, then the bitField is all 1's
         if(this.thisPeer.hasFile) {
-            bitfield.set(0, bitfield.length());
+            this.thisPeer.bitfield.set(0, this.thisPeer.bitfield.length());
         }
 
         System.out.println("This peer has the bitfield: ");
-        for(int i = 0; i < bitfield.length(); i++) {
-            System.out.print(bitfield.get(i));
+        for(int i = 0; i < this.thisPeer.bitfield.length(); i++) {
+            System.out.print(this.thisPeer.bitfield.get(i));
         }
     }
 
@@ -144,7 +148,7 @@ public class App {
         String[] values = data.split(" ");
 
         // Verify that there is the correct number of values in the data string
-        if(values.length != 4) {
+        if(values.length != 5) {
             throw new AppConfigException("Incorrect amount of values given for peer");
         }
 
@@ -153,13 +157,46 @@ public class App {
         String hostName = values[1];
         int port = Integer.parseInt(values[2]);
         boolean hasFile = Integer.parseInt(values[3]) == 0 ? false : true;
+        BitSet bitfield = new BitSet();
 
         return new Peer(
                 peerId,
                 hostName,
                 port,
-                hasFile
+                hasFile,
+                bitfield
         );
+    }
+
+    public void newPeerFile() throws FileNotFoundException {
+        String pathName = "peer_" + thisPeer.id;
+        File newPeerDirectory = new File(pathName);
+        newPeerDirectory.mkdir();
+        RandomAccessFile peerFile = new RandomAccessFile(newPeerDirectory.getAbsolutePath() + "/" + this.filename, "rw");
+    }
+
+    public synchronized byte[] readData(int pieceNumber) throws IOException {
+        int startPosition = pieceNumber * pieceSize;
+        byte[] pieceBytes;
+        if(fileSize % numPieces != 0){
+            pieceBytes = new byte[fileSize % numPieces];
+        } else {
+            pieceBytes = new byte[pieceSize];
+        }
+        peerFile.seek(startPosition);
+        for(int i = 0; i < pieceBytes.length; i++){
+            pieceBytes[i] = peerFile.readByte();
+        }
+        return pieceBytes;
+    }
+
+    public synchronized void writeData(int pieceNumber, byte[] pieceBytes) throws IOException {
+        int startingPosition = pieceNumber * pieceBytes.length;
+        peerFile.seek(startingPosition);
+        for(int i = 0; i < pieceBytes.length; i++){
+            peerFile.writeByte(pieceBytes[i]);
+        }
+        this.thisPeer.bitfield.set(pieceNumber);
     }
 
     // Run the peer application
