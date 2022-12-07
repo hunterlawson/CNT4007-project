@@ -40,11 +40,22 @@ public class App {
     private App(int peerId) throws AppConfigException {
         // Read in the config file data and store it in the app
         readConfigFiles();
+
+        // Set the current peer using the peerId passed in and searching the list of peers given in the file
+        for(Peer p : peers) {
+            if(p.id == peerId) {
+                this.thisPeer = p;
+            }
+        }
+
+        if(this.thisPeer == null) {
+            throw new AppConfigException("A peer with the given ID does not exist: " + peerId);
+        }
+
         // Calculate the total number of pieces = ceil(fileSize / pieceSize)
         this.numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
         // Initialize the bitField with the corresponding number of bits
         this.bitfield = new BitSet(this.numPieces);
-
         // If this peer has the entire file, then the bitField is all 1's
         if(this.thisPeer.hasFile) {
             bitfield.set(0, bitfield.length());
@@ -149,20 +160,6 @@ public class App {
                 port,
                 hasFile
         );
-    }
-
-    // Sets the peer information from the given ID
-    // Throws an error if a peer with that ID does not exist in the PeerInfo.cfg config file
-    public void setPeerID(int peerID) throws AppConfigException {
-        // Get the corresponding values
-        for(Peer p : peers) {
-            if(p.id == peerID) {
-                this.thisPeer = p;
-                return;
-            }
-        }
-
-        throw new AppConfigException("Peer with the given ID does not exist in the peer config file");
     }
 
     // Run the peer application
