@@ -3,6 +3,7 @@ package models.messages;
 import exceptions.InvalidMessageException;
 
 import java.nio.ByteBuffer;
+import java.util.BitSet;
 
 public class Message {
     public enum MessageType {
@@ -52,6 +53,23 @@ public class Message {
         }
     }
 
+    public static Message makeBitfieldMessage(BitSet bitfield) throws InvalidMessageException {
+        byte[] payload = new byte[(bitfield.length() + 7) / 8];
+        for(int i = 0; i < payload.length; i++) {
+            byte b = 0;
+            for(int j = 0; j < 8; j++) {
+                b |= bitfield.get(i*8 + j) ? 1 : 0;
+                if(j == 7) {
+                    break;
+                }
+                b <<= 1;
+            }
+            payload[i] = b;
+        }
+
+        return new Message(MessageType.BITFIELD, payload);
+    }
+
     public MessageType getType() {
         return MessageType.values()[type];
     }
@@ -83,18 +101,18 @@ public class Message {
                 break;
             }
             case HAVE:
-            case REQUEST:
-            case PIECE: {
+            case REQUEST: {
                 if(payload.length != 4) {
                     throw new InvalidMessageException(type.toString() + " messages require a payload of 4 bytes");
                 }
                 break;
             }
-            case BITFIELD: {
-                if(payload.length != 2) {
-                    throw new InvalidMessageException(type.toString() + " messages require a payload of 2 bytes");
-                }
-            }
+            // case PIECE:
+//            case BITFIELD: {
+//                if(payload.length != 2) {
+//                    throw new InvalidMessageException(type.toString() + " messages require a payload of 2 bytes");
+//                }
+//            }
         }
     }
 
