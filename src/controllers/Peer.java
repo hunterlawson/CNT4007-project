@@ -1,5 +1,7 @@
 package controllers;
 
+import java.util.BitSet;
+
 public class Peer implements Comparable<Peer> {
 
     int id;

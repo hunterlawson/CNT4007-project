@@ -2,17 +2,19 @@ package controllers;
 
 import exceptions.AppConfigException;
 import models.messages.HandshakeMessage;
-import models.messages.Message;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
 
 public class App {
     private static App instance = null;
+    public static boolean running = true;
+    public static ArrayList<Peer> neighbors = new ArrayList<>();
+    public static HashMap<Integer, BitSet> bitfieldMap = new HashMap<>();
 
     // File names
     static final String COMMON_CONFIG_FILENAME = "Common.cfg";
@@ -23,19 +25,16 @@ public class App {
     int unchokingInterval;
     int optimisticChokingInterval;
     String filename;
-    int fileSize;
-    int pieceSize;
+    static int fileSize;
+    static int pieceSize;
     // Total number of pieces needed to download the entire file
-    int numPieces;
+    static int numPieces;
 
     // This application's peer information
     Peer thisPeer = null;
 
     // Peer data
     ArrayList<Peer> peers = new ArrayList<>();
-
-    // Bitfield - used to store what pieces this peer has
-    BitSet bitfield;
 
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
@@ -56,14 +55,14 @@ public class App {
 
         // Calculate the total number of pieces = ceil(fileSize / pieceSize)
         this.numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
-        // Initialize the bitField with the corresponding number of bits
-        this.bitfield = new BitSet(this.numPieces);
+
+        // Insert this peer's bitfield into the bitfieldMap
+        BitSet thisBitfield = new BitSet(numPieces);
         // If this peer has the entire file, then the bitField is all 1's
         if(this.thisPeer.hasFile) {
-            bitfield.set(0, bitfield.size());
+            thisBitfield.set(0, thisBitfield.size());
         }
-
-        System.out.println("This peer has the bitfield: " + this.bitfield.toString());
+        bitfieldMap.put(this.thisPeer.getId(), thisBitfield);
     }
 
     // Performs any validation of configuration files and throws any errors that might occur
@@ -216,7 +215,7 @@ public class App {
 
             // Otherwise, we have established a proper connection
             // Spawn a handler thread to handle further interactions with the other peer
-            ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer, this.bitfield,
+            ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
                     socket, inputStream, outputStream);
 
             clientHandler.start();
@@ -226,7 +225,7 @@ public class App {
         System.out.println("Starting server socket listener...");
         ServerSocket serverSocket = new ServerSocket(this.thisPeer.port);
 
-        while(true) {
+        while(running) {
             Socket socket = serverSocket.accept();
             System.out.println("Accepted TCP connection");
             DataInputStream inputStream = new DataInputStream(socket.getInputStream());
@@ -253,7 +252,7 @@ public class App {
 
             // We've now established a connection
             // Spawn a handler thread to handle the rest of the connection
-            ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer, this.bitfield,
+            ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
                     socket, inputStream, outputStream);
 
             clientHandler.start();

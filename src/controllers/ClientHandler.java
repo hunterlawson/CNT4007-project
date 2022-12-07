@@ -11,17 +11,15 @@ import java.lang.*;
 
 public class ClientHandler extends Thread {
     Peer thisPeer, targetPeer;
-    BitSet thisBitfield, targetBitfield;
     Socket socket;
     DataInputStream inStream;
     DataOutputStream outStream;
 
-    public ClientHandler(Peer thisPeer, Peer targetPeer, BitSet bitfield,
+    public ClientHandler(Peer thisPeer, Peer targetPeer,
                          Socket socket, DataInputStream inStream, DataOutputStream outStream) throws Exception {
         this.thisPeer = thisPeer;
         this.targetPeer = targetPeer;
         this.socket = socket;
-        this.thisBitfield = bitfield;
 
         this.inStream = inStream;
         this.outStream = outStream;
@@ -30,19 +28,23 @@ public class ClientHandler extends Thread {
     @Override
     public void run() {
         try {
+            int thisId = this.thisPeer.getId();
+            int targetId = this.targetPeer.getId();
             System.out.println("Running the client handler thread");
             // Send the bitfield message
-            Message sendBitfieldMessage = Message.makeBitfieldMessage(this.thisBitfield);
+            Message sendBitfieldMessage = Message.makeBitfieldMessage(App.bitfieldMap.get(thisId));
             sendMessage(this.outStream, sendBitfieldMessage);
 
             // Receive the bitfield message
             Message receiveBitfieldMessage = receiveMessage(inStream);
-            this.targetBitfield = receiveBitfieldMessage.getBitfield();
-            System.out.println("Received bitfield: " + this.targetBitfield.toString());
+            BitSet receivedBitfield = receiveBitfieldMessage.getBitfield();
+            App.bitfieldMap.put(targetId, receivedBitfield);
+            System.out.println("Received bitfield: " + receivedBitfield.toString());
 
             // Determine interest from the received bitfield
-            BitSet comparisonSet = this.targetBitfield;
-            comparisonSet.andNot(this.thisBitfield);
+            BitSet comparisonSet = receivedBitfield;
+            BitSet thisPeerBitfield = App.bitfieldMap.get(thisId);
+            comparisonSet.andNot(thisPeerBitfield);
 
             // If there are bits we don't have, send an INTERESTED message
             // Otherwise, send NOT_INTERESTED
