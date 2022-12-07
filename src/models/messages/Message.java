@@ -90,7 +90,7 @@ public class Message {
             case UNCHOKE:
             case INTERESTED:
             case NOT_INTERESTED: {
-                if (payload.length == 0) {
+                if (payload.length != 0) {
                     throw new InvalidMessageException(type.toString() + " messages require an empty payload");
                 }
                 break;
