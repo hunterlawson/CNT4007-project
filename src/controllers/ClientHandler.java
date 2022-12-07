@@ -38,9 +38,9 @@ public class ClientHandler extends Thread {
             // Receive the bitfield message
             Message receiveBitfieldMessage = receiveMessage(inStream);
             this.targetBitfield = receiveBitfieldMessage.getBitfield();
-            System.out.println("Received bitfield: " + this.thisBitfield.toString());
+            System.out.println("Received bitfield: " + this.targetBitfield.toString());
         } catch(Exception e) {
-            System.out.println("Error running the client handler thread: " + e.getMessage());
+            System.out.println("Error running the client handler thread: " + e.toString());
         }
     }
 
@@ -52,11 +52,16 @@ public class ClientHandler extends Thread {
     Message receiveMessage(DataInputStream inStream) throws Exception {
         // First 4 bytes of a message are the payload size
         int messageSize = ByteBuffer.wrap(inStream.readNBytes(4)).getInt();
+        System.out.println("Received message with size: " + messageSize);
+
+        // Next byte is the message type
+        byte messageTypeByte = inStream.readByte();
+
+        // Read the message payload
         byte[] payload = new byte[messageSize];
         inStream.readNBytes(payload, 0, messageSize);
 
         // Next byte is the message type
-        byte messageTypeByte = inStream.readByte();
         Message.MessageType type = Message.MessageType.values()[messageTypeByte];
 
         return new Message(type, payload);

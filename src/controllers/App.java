@@ -60,7 +60,7 @@ public class App {
         this.bitfield = new BitSet(this.numPieces);
         // If this peer has the entire file, then the bitField is all 1's
         if(this.thisPeer.hasFile) {
-            bitfield.set(0, bitfield.length());
+            bitfield.set(0, bitfield.size());
         }
 
         System.out.println("This peer has the bitfield: " + this.bitfield.toString());

@@ -55,31 +55,14 @@ public class Message {
 
     // Make a bitfield message out of the given bitfield stored in a BitSet
     public static Message makeBitfieldMessage(BitSet bitfield) throws InvalidMessageException {
-        byte[] payload = new byte[(bitfield.size() + 7) / 8];
-        for(int i = 0; i < payload.length; i++) {
-            byte b = 0;
-            for(int j = 0; j < 8; j++) {
-                b |= bitfield.get(i*8 + j) ? 1 : 0;
-                if(j == 7) {
-                    break;
-                }
-                b <<= 1;
-            }
-            payload[i] = b;
-        }
+        byte[] payload = bitfield.toByteArray();
 
         return new Message(MessageType.BITFIELD, payload);
     }
 
     public BitSet getBitfield() {
         // Create a BitSet object to represent the payload which should be another bitfield
-        BitSet bitfield = new BitSet();
-        for (int i = 0; i < this.payload.length * 8; i++) {
-            if ((this.payload[i / 8] & (1 << (7 - i % 8))) > 0) {
-                bitfield.set(i);
-            }
-        }
-        return bitfield;
+        return BitSet.valueOf(payload);
     }
 
     // Get the enum type of the message
