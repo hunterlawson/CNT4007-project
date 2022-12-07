@@ -23,6 +23,8 @@ public class ClientHandler extends Thread {
 
         this.inStream = inStream;
         this.outStream = outStream;
+
+        this.logger = logger;
     }
 
     @Override

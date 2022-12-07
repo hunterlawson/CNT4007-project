@@ -1,4 +1,5 @@
-import controllers.Peer;
+package controllers;
+
 import exceptions.InvalidMessageException;
 import models.messages.*;
 
@@ -27,6 +28,11 @@ public class PeerThread {
     boolean interested = false;
 
     ArrayList<Peer> neighbors;
+    ArrayList<Peer> interestedPeers;
+
+    public PeerThread() {
+
+    }
 
     public void sendMessage(Message message) {
 
@@ -35,6 +41,7 @@ public class PeerThread {
     //determine which piece to request (random)
     public byte[] createRequest() {
         byte[] indexField = null;
+        Random rand = new Random();
 
         return indexField;
     }
