@@ -16,8 +16,6 @@ public class App {
     public static ArrayList<Peer> neighbors = new ArrayList<>();
     public static HashMap<Integer, BitSet> bitfieldMap = new HashMap<>();
 
-    PeerLogger logger;
-
     // File names
     static final String COMMON_CONFIG_FILENAME = "Common.cfg";
     static final String PEER_INFO_FILENAME = "PeerInfo.cfg";
@@ -43,8 +41,6 @@ public class App {
     private App(int peerId) throws AppConfigException {
         // Read in the config file data and store it in the app
         readConfigFiles();
-
-        logger = new PeerLogger(peerId);
 
         // Set the current peer using the peerId passed in and searching the list of peers given in the file
         for(Peer p : peers) {
@@ -197,7 +193,6 @@ public class App {
             // Connect to the target peer
             Socket socket = new Socket(targetPeer.hostname, targetPeer.port);
             System.out.println("Connected to peer ID: " + targetPeer.getId() + " on port: " + targetPeer.getPort());
-            logger.writeLog("Peer " + this.thisPeer.id + " makes a connection to Peer " + targetPeer.id);
 
             // Create the data output and input streams
             DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
@@ -210,9 +205,8 @@ public class App {
 
             // Wait for a response handshake message
             HandshakeMessage receiveHandshake = receiveHandshakeMessage(inputStream);
-            int targetId = receiveHandshake.getPeerId();
-            System.out.println("Received handshake from peer ID: " + targetId);
-            logger.writeLog("Peer " + this.thisPeer.id + " received handshake from " + targetId);
+            System.out.println("Received handshake from peer ID: " + receiveHandshake.getPeerId());
+
             // Check that the ID from the response handshake is correct
             if(receiveHandshake.getPeerId() != targetPeer.getId()) {
                 System.out.println("The response handshake ID does not match!");
@@ -234,15 +228,14 @@ public class App {
         while(running) {
             Socket socket = serverSocket.accept();
             System.out.println("Accepted TCP connection");
-
             DataInputStream inputStream = new DataInputStream(socket.getInputStream());
             DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
 
             // Receive handshake messages from other peers
             HandshakeMessage receiveHandshake = receiveHandshakeMessage(inputStream);
-            int targetId = receiveHandshake.getPeerId();
-            System.out.println("Handshake message received from peer with ID: " + targetId);
-            logger.writeLog("Peer " + this.thisPeer.id + " received handshake from " + targetId);
+
+            System.out.println("Handshake message received from peer with ID: " + receiveHandshake.getPeerId());
+
             // Send a response handshake
             System.out.println("Sending a handshake to peer with ID: " + receiveHandshake.getPeerId());
             HandshakeMessage sendHandshake = new HandshakeMessage(this.thisPeer.getId());
