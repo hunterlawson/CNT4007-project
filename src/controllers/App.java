@@ -182,41 +182,76 @@ public class App {
             }
         }
 
-        // Connect to peers (if there are any)
+        // Connect to all previous peers (if there are any)
         System.out.println("Connecting to " + previousPeers.size() +  " peers");
         for(int i = 0; i < previousPeers.size(); i++) {
-            Client clientThread = new Client(this.thisPeer, previousPeers.get(i), this.bitfield);
+            Peer targetPeer = previousPeers.get(i);
 
-            clientThread.start();
+            // Connect to the target peer
+            Socket socket = new Socket(targetPeer.hostname, targetPeer.port);
+            System.out.println("Connected to peer ID: " + targetPeer.getId() + " on port: " + targetPeer.getPort());
+
+            // Create the data output and input streams
+            DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+            DataInputStream inputStream = new DataInputStream(socket.getInputStream());
+
+            // Send the handshake message
+            HandshakeMessage sendHandshake = new HandshakeMessage(thisPeer.getId());
+            outputStream.write(sendHandshake.getMessageBytes());
+            outputStream.flush();
+            System.out.println("Handshake sent to peer ID: " + targetPeer.getId());
+
+            // Wait for a response handshake message
+            byte[] responseBytes = inputStream.readAllBytes();
+            System.out.println("bubba");
+            HandshakeMessage receiveHandshake = new HandshakeMessage(responseBytes);
+
+            // Check that the ID from the response handshake is correct
+            if(receiveHandshake.getPeerId() != targetPeer.getId()) {
+                System.out.println("The response handshake ID does not match!");
+                return;
+            }
+
+            // Otherwise, we have established a proper connection
+            // Spawn a handler thread to handle further interactions with the other peer
+            ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer, this.bitfield,
+                    socket, inputStream, outputStream);
+
+            clientHandler.start();
+
+            return;
         }
 
-        System.out.println("Starting server socket listener...");
         // Listen for peers
+        System.out.println("Starting server socket listener...");
         ServerSocket serverSocket = new ServerSocket(this.thisPeer.port);
 
-        Socket connectionSocket = serverSocket.accept();
-        DataInputStream inputStream = new DataInputStream(connectionSocket.getInputStream());
-        DataOutputStream outputStream = new DataOutputStream(connectionSocket.getOutputStream());
+        while(true) {
+            Socket connectionSocket = serverSocket.accept();
+            System.out.println("Accepted TCP connection");
+            DataInputStream inputStream = new DataInputStream(connectionSocket.getInputStream());
+            DataOutputStream outputStream = new DataOutputStream(connectionSocket.getOutputStream());
 
-        // Receive handshake messages from other peers
-        byte[] messageBytes = inputStream.readAllBytes();
+            // Receive handshake messages from other peers
+            byte[] messageBytes = inputStream.readAllBytes();
 
-        System.out.println("Received " + messageBytes.length + " bytes");
+            System.out.println("Received " + messageBytes.length + " bytes");
 
-        // DEBUG print out the bytes
-        String hex = "";
-        for(byte b : messageBytes) {
-            hex += String.format("%02X", b);
+            // DEBUG print out the bytes
+            String hex = "";
+            for(byte b : messageBytes) {
+                hex += String.format("%02X", b);
+            }
+            System.out.println(hex);
+
+            HandshakeMessage receiveHandshake = new HandshakeMessage(messageBytes);
+            System.out.println("Handshake message received from peer with ID: " + receiveHandshake.getPeerId());
+
+            // Send a response handshake
+//            System.out.println("Sending a handshake to peer with ID: " + receiveHandshake.getPeerId());
+//            HandshakeMessage sendHandshake = new HandshakeMessage(this.thisPeer.getId());
+//            outputStream.write(sendHandshake.getMessageBytes());
+//            outputStream.flush();
         }
-        System.out.println(hex);
-
-        HandshakeMessage receiveHandshake = new HandshakeMessage(messageBytes);
-        System.out.println("Handshake message received from peer with ID: " + receiveHandshake.getPeerId());
-
-        // Send a response handshake
-        System.out.println("Sending a handshake to peer with ID: " + receiveHandshake.getPeerId());
-        HandshakeMessage sendHandshake = new HandshakeMessage(this.thisPeer.getId());
-        outputStream.write(sendHandshake.getMessageBytes());
-        outputStream.flush();
     }
 }
