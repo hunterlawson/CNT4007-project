@@ -156,15 +156,22 @@ public class ClientHandler extends Thread {
         BitSet thisPeerBitfield = App.bitfieldMap.get(this.thisPeer.getId());
         comparisonSet.andNot(thisPeerBitfield);
 
-        int nextIndex = comparisonSet.nextSetBit(0);
-        if(nextIndex == -1) {
-            return nextIndex;
+        ArrayList<Integer> indices = new ArrayList<Integer>();
+        for(int i = comparisonSet.nextSetBit(0); i != -1; i = comparisonSet.nextSetBit(i + 1)) {
+            indices.add(i);
         }
 
-        thisPeerBitfield.set(nextIndex);
+        if(indices.size() == 0) {
+            return -1;
+        }
+
+        int randomIndex = indices.get((int)(Math.random() * indices.size()));
+
+
+        thisPeerBitfield.set(randomIndex);
         App.bitfieldMap.put(this.thisPeer.getId(), thisPeerBitfield);
 
-        return nextIndex;
+        return randomIndex;
     }
 
     // Set the bit at the corresponding index for the peer with ID peerId
