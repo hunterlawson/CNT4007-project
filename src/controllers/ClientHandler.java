@@ -44,6 +44,7 @@ public class ClientHandler extends Thread {
             BitSet receivedBitfield = receiveBitfieldMessage.getBitfield();
             App.bitfieldMap.put(targetId, receivedBitfield);
             System.out.println("Received bitfield: " + receivedBitfield.toString());
+            logger.writeLog("Peer " + thisPeer.id + " received bitfield from: " + targetId);
 
             // Determine interest from the received bitfield
             BitSet comparisonSet = receivedBitfield;
@@ -67,26 +68,31 @@ public class ClientHandler extends Thread {
                 switch (receivedMessage.getType()) {
                     case INTERESTED -> {
                         System.out.println("Received INTERESTED message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " received INTERESTED message from: " + targetId);
                         // Mark the neighbor peer as interested
                         App.interestedNeighbors.put(targetId, true);
                     }
                     case NOT_INTERESTED -> {
                         System.out.println("Received NOT_INTERESTED message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " received NOT_INTERESTED message from: " + targetId);
                         // Mark the neighbor peer as not interested
                         App.interestedNeighbors.put(targetId, false);
                     }
                     case CHOKE -> {
                         System.out.println("Received CHOKE message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " received CHOKE message from: " + targetId);
                         this.choked = true;
                         App.neighbors.put(targetId, true);
                     }
                     case UNCHOKE -> {
                         System.out.println("Received UNCHOKE message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " received UNCHOKE message from: " + targetId);
                         this.choked = false;
                         App.neighbors.put(targetId, false);
                     }
                     case REQUEST -> {
                         System.out.println("Received REQUEST message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " received REQUEST message from: " + targetId);
                         // Send the requested piece
                         int pieceIndex = ByteBuffer.wrap(receivedMessage.getPayloadBytes()).getInt();
                         byte[] pieceBytes = new byte[0];
@@ -94,6 +100,7 @@ public class ClientHandler extends Thread {
                     case HAVE -> {
                         // Update the bitfield for the peer with the piece index that it has
                         System.out.println("Received HAVE message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " received HAVE message from: " + targetId);
                         BitSet targetBitfield = App.bitfieldMap.get(targetId);
                         int pieceIndex = ByteBuffer.wrap(receivedMessage.getPayloadBytes()).getInt();
                         targetBitfield.set(pieceIndex);

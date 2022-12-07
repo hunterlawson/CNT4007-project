@@ -10,8 +10,8 @@ import java.util.logging.SimpleFormatter;
 
 public class PeerLogger {
 
-    Logger logger = Logger.getLogger("PeerLogger");
-    FileHandler fh;
+//    Logger logger = Logger.getLogger("PeerLogger");
+//    FileHandler fh;
     int peerID;
     private BufferedWriter writer = null;
 
@@ -19,50 +19,51 @@ public class PeerLogger {
     public PeerLogger(int peerID) {
         String filename = "log_peer_" + peerID + ".log";
         try {
-            //writer = new BufferedWriter(new FileWriter(filename));
-            fh = new FileHandler(filename);
-            logger.addHandler(fh);
-            SimpleFormatter formatter = new SimpleFormatter();
-            fh.setFormatter(formatter);
+            writer = new BufferedWriter(new FileWriter(filename));
+//            fh = new FileHandler(filename);
+//            logger.addHandler(fh);
+//            SimpleFormatter formatter = new SimpleFormatter();
+//            fh.setFormatter(formatter);
         } catch (IOException e) {
             System.out.println("Error creating logger");
         }
     }
 
     //writes message to log file (buffer)
-//    public void writeLog(String message) {
-//        LocalDateTime now = LocalDateTime.now();
-//        try {
-//            writer.write(now + ": " + message);
-//        } catch (IOException e) {
-//            System.out.println("Error writing log");
-//        }
-//    }
-    public void writeLog(String message) {
-        //LocalDateTime now = LocalDateTime.now();
+    public synchronized void writeLog(String message) {
+        LocalDateTime now = LocalDateTime.now();
         try {
-            //writer.write(now + ": " + message);
-            logger.info(message);
-        } catch (Exception e) {
+            writer.write(now + ": " + message + "\n");
+            flushBuffer();
+        } catch (IOException e) {
             System.out.println("Error writing log");
         }
     }
+//    public void writeLog(String message) {
+//        //LocalDateTime now = LocalDateTime.now();
+//        try {
+//            //writer.write(now + ": " + message);
+//            logger.info(message);
+//        } catch (Exception e) {
+//            System.out.println("Error writing log");
+//        }
+//    }
 
     //writes buffered messages to file
-//    public void flushBuffer() {
-//        try {
-//            writer.flush();
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
-//
-//    //closes the file
-//    public void closeFile() {
-//        try {
-//            writer.close();
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
+    public void flushBuffer() {
+        try {
+            writer.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    //closes the file
+    public void closeFile() {
+        try {
+            writer.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
