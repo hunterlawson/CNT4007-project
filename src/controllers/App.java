@@ -1,14 +1,14 @@
 package controllers;
 
 import exceptions.AppConfigException;
+import exceptions.InvalidMessageException;
 import models.messages.HandshakeMessage;
+import models.messages.Message;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
+import java.util.*;
 
 public class App {
     private static App instance = null;
@@ -20,6 +20,10 @@ public class App {
     public static HashMap<Integer, BitSet> bitfieldMap = new HashMap<>();
 
     PeerLogger logger;
+
+    Timer timer;
+    TimerTask optimisticUnchoke;
+    TimerTask setPreferedNeighbors;
 
     //file object
     static public RandomAccessFile file;
@@ -43,6 +47,10 @@ public class App {
 
     // Peer data
     ArrayList<Peer> peers = new ArrayList<>();
+    ArrayList<Peer> connected_peers = new ArrayList<>();
+    ArrayList<ClientHandler> connections = new ArrayList<>();
+    ArrayList<ClientHandler> unchoked_clients = new ArrayList<>();
+    ArrayList<ClientHandler> choked_clients = new ArrayList<>();
 
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
@@ -51,6 +59,8 @@ public class App {
         readConfigFiles();
 
         logger = new PeerLogger(peerId);
+        timer = new Timer();
+
 
         // Set the current peer using the peerId passed in and searching the list of peers given in the file
         for(Peer p : peers) {
@@ -261,7 +271,49 @@ public class App {
                     socket, inputStream, outputStream, logger);
 
             clientHandler.start();
+            connected_peers.add(targetPeer);
+            connections.add(clientHandler);
+            choked_clients.add(clientHandler);
         }
+
+        optimisticUnchoke = new TimerTask() {
+            @Override
+            public void run() {
+                if (choked_clients.size() > 0) {
+                    Collections.shuffle(choked_clients);
+                    ClientHandler client = choked_clients.get(0);
+                    try {
+                        Message message = new Message(Message.MessageType.UNCHOKE);
+                        client.outStream.write(message.getMessageBytes());
+                        client.outStream.flush();
+                        choked_clients.remove(0);
+                    } catch (InvalidMessageException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        };
+        setPreferedNeighbors = new TimerTask() {
+            @Override
+            public void run() {
+                for (ClientHandler client: connections) {
+                    try {
+                        Message message = new Message(Message.MessageType.UNCHOKE);
+                        client.outStream.write(message.getMessageBytes());
+                        client.outStream.flush();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } catch (InvalidMessageException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        };
+
+        timer.schedule(optimisticUnchoke, 0, optimisticChokingInterval*1000);
+        //timer.schedule(setPreferedNeighbors, 0, unchokingInterval*1000);
 
         // Peer server connection listener
         System.out.println("Starting server socket listener...");
@@ -297,7 +349,8 @@ public class App {
             // Spawn a handler thread to handle the rest of the connection
             ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
                     socket, inputStream, outputStream, logger);
-
+            connections.add(clientHandler);
+            choked_clients.add(clientHandler);
             clientHandler.start();
         }
     }
