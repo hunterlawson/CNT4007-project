@@ -1,15 +1,15 @@
 package controllers;
 
 import exceptions.AppConfigException;
+import exceptions.InvalidMessageException;
 import models.messages.HandshakeMessage;
+import models.messages.Message;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
+import java.util.*;
 
 public class App {
     private static App instance = null;
@@ -21,6 +21,12 @@ public class App {
     public static HashMap<Integer, BitSet> bitfieldMap = new HashMap<>();
 
     PeerLogger logger;
+
+    Timer timer;
+    TimerTask optimisticUnchoke;
+
+    ArrayList<ClientHandler> choked_clients = new ArrayList<>();
+    ArrayList<ClientHandler> clients = new ArrayList<>();
 
     //file object
     static public RandomAccessFile file;
@@ -52,6 +58,7 @@ public class App {
         readConfigFiles();
 
         logger = new PeerLogger(peerId);
+        timer = new Timer();
 
         // Set the current peer using the peerId passed in and searching the list of peers given in the file
         for(Peer p : peers) {
@@ -207,26 +214,29 @@ public class App {
         int startPosition = pieceIndex * pieceSize;
         byte[] pieceBytes;
         if(pieceIndex == numPieces - 1){
-            pieceBytes = new byte[fileSize % numPieces];
+            pieceBytes = new byte[fileSize % pieceSize];
         } else {
             pieceBytes = new byte[pieceSize];
         }
 
-        System.out.println("Reading file: " + startPosition + ", " + pieceBytes.length);
 
+        System.out.println("Reading file: " + startPosition + ", " + pieceBytes.length);
         file.seek(startPosition);
         ByteBuffer dataBuffer = ByteBuffer.allocate(pieceBytes.length);
         for(int i = 0; i < pieceBytes.length; i++) {
             dataBuffer.put(file.readByte());
         }
-        //System.out.println(pieceBytes[i]);
+
 
         return dataBuffer.array();
     }
 
+
     public static synchronized void writeData(int pieceIndex, byte[] pieceBytes) throws IOException {
+
         int startingPosition = pieceIndex * pieceSize;
         file.seek(startingPosition);
+
         file.write(pieceBytes, 0, pieceBytes.length);
     }
 
@@ -267,7 +277,7 @@ public class App {
             HandshakeMessage receiveHandshake = receiveHandshakeMessage(inputStream);
             int targetId = receiveHandshake.getPeerId();
             System.out.println("Received handshake from peer ID: " + targetId);
-            logger.writeLog("Peer " + this.thisPeer.id + " received handshake from " + targetId);
+            //logger.writeLog("Peer " + this.thisPeer.id + " received handshake from " + targetId);
             // Check that the ID from the response handshake is correct
             if(receiveHandshake.getPeerId() != targetPeer.getId()) {
                 System.out.println("The response handshake ID does not match!");
@@ -278,9 +288,32 @@ public class App {
             // Spawn a handler thread to handle further interactions with the other peer
             ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
                     socket, inputStream, outputStream, logger);
-
+            clients.add(clientHandler);
+            choked_clients.add(clientHandler);
             clientHandler.start();
         }
+
+        optimisticUnchoke = new TimerTask() {
+            @Override
+            public void run() {
+                if (choked_clients.size() > 0) {
+                    Collections.shuffle(choked_clients);
+                    ClientHandler client = choked_clients.get(0);
+                    try {
+                        Message message = new Message(Message.MessageType.UNCHOKE);
+                        client.outStream.write(message.getMessageBytes());
+                        client.outStream.flush();
+                        choked_clients.remove(0);
+                    } catch (InvalidMessageException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        };
+
+        timer.schedule(optimisticUnchoke, 0, optimisticChokingInterval*1000);
 
         // Peer server connection listener
         ServerSocket serverSocket = new ServerSocket(this.thisPeer.port);
@@ -297,7 +330,7 @@ public class App {
             HandshakeMessage receiveHandshake = receiveHandshakeMessage(inputStream);
             int targetId = receiveHandshake.getPeerId();
             System.out.println("Handshake message received from peer with ID: " + targetId);
-            logger.writeLog("Peer " + this.thisPeer.id + " received handshake from " + targetId);
+            logger.writeLog("Peer " + this.thisPeer.id + " is connected from Peer " + targetId);
             // Send a response handshake
             System.out.println("Sending a handshake to peer with ID: " + receiveHandshake.getPeerId());
             HandshakeMessage sendHandshake = new HandshakeMessage(this.thisPeer.getId());
@@ -316,7 +349,8 @@ public class App {
             // Spawn a handler thread to handle the rest of the connection
             ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
                     socket, inputStream, outputStream, logger);
-
+            clients.add(clientHandler);
+            choked_clients.add(clientHandler);
             clientHandler.start();
         }
     }

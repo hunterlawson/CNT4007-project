@@ -70,13 +70,14 @@ public class ClientHandler extends Thread {
                 // Send any messages that we need to send
 
                 // Send a request to a random piece from the target
-                if(targetPeer.isHasFile() && !thisPeer.isHasFile()) {
+                if(targetPeer.hasFile && !thisPeer.isHasFile() && !choked) {
                     int randomPieceIndex = getRandomPiece();
                     if(randomPieceIndex == -1) {
                         thisPeer.setHasFile(true);
                     } else {
                         byte[] requestPayload = ByteBuffer.allocate(4).putInt(randomPieceIndex).array();
                         Message requestMessage = new Message(Message.MessageType.REQUEST, requestPayload);
+                        System.out.println("payload size: " + requestPayload.length);
 
                         sendMessage(outStream, requestMessage);
                     }
@@ -93,25 +94,35 @@ public class ClientHandler extends Thread {
                     }
                     case NOT_INTERESTED -> {
                         System.out.println("Received NOT_INTERESTED message from: " + targetId);
-                        logger.writeLog("Peer " + thisPeer.id + " received NOT_INTERESTED message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " received NOT INTERESTED message from " + targetId);
                         // Mark the neighbor peer as not interested
                         App.interestedNeighbors.put(targetId, false);
                     }
                     case CHOKE -> {
                         System.out.println("Received CHOKE message from: " + targetId);
-                        logger.writeLog("Peer " + thisPeer.id + " received CHOKE message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " is CHOKED by " + targetId);
                         this.choked = true;
                         App.neighbors.put(targetId, true);
                     }
                     case UNCHOKE -> {
                         System.out.println("Received UNCHOKE message from: " + targetId);
-                        logger.writeLog("Peer " + thisPeer.id + " received UNCHOKE message from: " + targetId);
+                        logger.writeLog("Peer " + thisPeer.id + " is UNCHOKED by " + targetId);
                         this.choked = false;
                         App.neighbors.put(targetId, false);
+//                        int randomPieceIndex = getRandomPiece();
+//                        if(randomPieceIndex == -1) {
+//                            thisPeer.setHasFile(true);
+//                        } else {
+//                            byte[] requestPayload = ByteBuffer.allocate(4).putInt(randomPieceIndex).array();
+//                            Message requestMessage = new Message(Message.MessageType.REQUEST, requestPayload);
+//                            System.out.println("payload size: " + requestPayload.length);
+//
+//                            sendMessage(outStream, requestMessage);
+//                        }
                     }
                     case REQUEST -> {
                         System.out.println("Received REQUEST message from: " + targetId);
-                        logger.writeLog("Peer " + thisPeer.id + " received REQUEST message from: " + targetId);
+                        //logger.writeLog("Peer " + thisPeer.id + " received REQUEST message from: " + targetId);
                         int pieceIndex = ByteBuffer.wrap(receivedMessage.getPayloadBytes()).getInt();
                         // Update the bitfield for that peer to reflect the new requested piece
                         updateBitfield(pieceIndex, targetId);
@@ -119,17 +130,20 @@ public class ClientHandler extends Thread {
 
                         // Send the requested piece
                         byte[] pieceBytes = App.readData(pieceIndex);
+                        System.out.println("read in bytes: " + pieceBytes.length);
                         ByteBuffer pieceMessagePayload = ByteBuffer.allocate(pieceBytes.length + 4);
                         pieceMessagePayload.putInt(pieceIndex);
                         pieceMessagePayload.put(pieceBytes);
+                        logger.writeLog("Peer " + thisPeer.id + " sending PIECE message for piece: " + pieceIndex + "to peer " + targetId);
                         Message pieceMessage = new Message(Message.MessageType.PIECE, pieceMessagePayload.array());
                         sendMessage(outStream, pieceMessage);
                     }
                     case HAVE -> {
                         // Update the bitfield for the peer with the piece index that it has
                         System.out.println("Received HAVE message from: " + targetId);
-                        logger.writeLog("Peer " + thisPeer.id + " received HAVE message from: " + targetId);
+
                         int pieceIndex = ByteBuffer.wrap(receivedMessage.getPayloadBytes()).getInt();
+                        logger.writeLog("Peer " + thisPeer.id + " received HAVE message from: " + targetId + " for the piece " + pieceIndex);
                         updateBitfield(pieceIndex, targetId);
                     }
                     case PIECE -> {
@@ -137,14 +151,23 @@ public class ClientHandler extends Thread {
                         byte[] payloadBytes = receivedMessage.getPayloadBytes();
                         int payloadSize = payloadBytes.length - 4;
                         int pieceIndex = ByteBuffer.wrap(payloadBytes, 0, 4).getInt();
-                        byte[] pieceBytes = ByteBuffer.wrap(payloadBytes, 4, payloadSize).array();
-                        System.out.println("Piece size: " + payloadSize);
+                        //byte[] pieceBytes = ByteBuffer.wrap(payloadBytes, 4, payloadSize).array();
+                        byte[] pieceBytes = new byte[payloadSize];
+                        for (int i=0; i<payloadSize; i++) {
+                            pieceBytes[i] = payloadBytes[i+4];
+                        }
 
                         // Write to the file
+                        Long startTimer = System.nanoTime();
                         App.writeData(pieceIndex, pieceBytes);
+                        Long downloadTime = System.nanoTime() - startTimer;
+                        Long downloadRate = (pieceBytes.length / downloadTime);
+                        thisPeer.setDownloadRate(downloadRate);
 
                         // Mark that we have received that piece in our bitfield
                         System.out.println("Piece index: " + pieceIndex);
+                        logger.writeLog("Peer " + thisPeer.id + " has downloaded the piece " + pieceIndex + " from "
+                                + targetId);
                     }
                 }
             }
@@ -159,20 +182,20 @@ public class ClientHandler extends Thread {
         BitSet thisPeerBitfield = App.bitfieldMap.get(this.thisPeer.getId());
         comparisonSet.andNot(thisPeerBitfield);
 
-//        ArrayList<Integer> indices = new ArrayList<Integer>();
-//        for(int i = comparisonSet.nextSetBit(0); i >= 0; i = comparisonSet.nextSetBit(i + 1)) {
-//            indices.add(i);
-//        }
-//
-//        if(indices.size() == 0) {
-//            return -1;
-//        }
-//
-//        int randomIndex = indices.get((int)(Math.random() * indices.size()));
+        ArrayList<Integer> indices = new ArrayList<Integer>();
+        for(int i = comparisonSet.nextSetBit(0); i >= 0; i = comparisonSet.nextSetBit(i + 1)) {
+            indices.add(i);
+        }
+
+        if(indices.size() == 0) {
+            return -1;
+        }
+
+        int randomIndex = indices.get((int)(Math.random() * indices.size()));
 
         System.out.println("Num bits: " + comparisonSet.length());
 
-        int randomIndex = comparisonSet.nextSetBit(0);
+        //int randomIndex = comparisonSet.nextSetBit(0);
 
         if(randomIndex == -1) {
             return -1;
