@@ -113,7 +113,7 @@ public class ClientHandler extends Thread {
                         System.out.println("Received REQUEST message from: " + targetId);
                         logger.writeLog("Peer " + thisPeer.id + " received REQUEST message from: " + targetId);
                         int pieceIndex = ByteBuffer.wrap(receivedMessage.getPayloadBytes()).getInt();
-                        // Update the bitfield for that peer to reflect the new requested peice
+                        // Update the bitfield for that peer to reflect the new requested piece
                         updateBitfield(pieceIndex, targetId);
                         System.out.println("REQUESTING INDEX: " + pieceIndex);
 
@@ -159,21 +159,28 @@ public class ClientHandler extends Thread {
         BitSet thisPeerBitfield = App.bitfieldMap.get(this.thisPeer.getId());
         comparisonSet.andNot(thisPeerBitfield);
 
-        ArrayList<Integer> indices = new ArrayList<Integer>();
-        for(int i = comparisonSet.nextSetBit(0); i != -1; i = comparisonSet.nextSetBit(i + 1)) {
-            indices.add(i);
-        }
+//        ArrayList<Integer> indices = new ArrayList<Integer>();
+//        for(int i = comparisonSet.nextSetBit(0); i >= 0; i = comparisonSet.nextSetBit(i + 1)) {
+//            indices.add(i);
+//        }
+//
+//        if(indices.size() == 0) {
+//            return -1;
+//        }
+//
+//        int randomIndex = indices.get((int)(Math.random() * indices.size()));
 
-        if(indices.size() == 0) {
+        System.out.println("Num bits: " + comparisonSet.length());
+
+        int randomIndex = comparisonSet.nextSetBit(0);
+
+        if(randomIndex == -1) {
             return -1;
         }
-
-        int randomIndex = indices.get((int)(Math.random() * indices.size()));
 
 
         thisPeerBitfield.set(randomIndex);
         App.bitfieldMap.put(this.thisPeer.getId(), thisPeerBitfield);
-
         return randomIndex;
     }
 

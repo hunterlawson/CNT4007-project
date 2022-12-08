@@ -67,12 +67,20 @@ public class App {
         // Calculate the total number of pieces = ceil(fileSize / pieceSize)
         numPieces = (int)Math.ceil((double)fileSize / (double)pieceSize);
 
+        System.out.println("NumPieces: " + numPieces);
+
         // Insert this peer's bitfield into the bitfieldMap
-        BitSet thisBitfield = new BitSet(numPieces);
+        BitSet thisBitfield = new BitSet();
         // If this peer has the entire file, then the bitField is all 1's
-        if(this.thisPeer.hasFile) {
-            thisBitfield.set(0, thisBitfield.size());
+        if(thisPeer.isHasFile()) {
+            thisBitfield.set(0, numPieces);
+        } else {
+            thisBitfield.clear(0, numPieces);
         }
+
+
+        System.out.println("Created bitfield of size: " + thisBitfield.length());
+
         bitfieldMap.put(this.thisPeer.getId(), thisBitfield);
 
         // Create this peer's file
@@ -204,7 +212,7 @@ public class App {
             pieceBytes = new byte[pieceSize];
         }
 
-        System.out.println("Reading file: " + pieceBytes.length);
+        System.out.println("Reading file: " + startPosition + ", " + pieceBytes.length);
 
         file.seek(startPosition);
         ByteBuffer dataBuffer = ByteBuffer.allocate(pieceBytes.length);
