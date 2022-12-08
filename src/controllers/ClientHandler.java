@@ -118,7 +118,7 @@ public class ClientHandler extends Thread {
                         System.out.println("REQUESTING INDEX: " + pieceIndex);
 
                         // Send the requested piece
-                        byte[] pieceBytes = new byte[App.pieceSize];
+                        byte[] pieceBytes = App.readData(pieceIndex);
                         ByteBuffer pieceMessagePayload = ByteBuffer.allocate(pieceBytes.length + 4);
                         pieceMessagePayload.putInt(pieceIndex);
                         pieceMessagePayload.put(pieceBytes);
@@ -136,9 +136,12 @@ public class ClientHandler extends Thread {
                         System.out.println("Received PIECE message from: " + targetId);
                         byte[] payloadBytes = receivedMessage.getPayloadBytes();
                         int payloadSize = payloadBytes.length - 4;
-                        System.out.println("Piece size: " + payloadSize);
                         int pieceIndex = ByteBuffer.wrap(payloadBytes, 0, 4).getInt();
                         byte[] pieceBytes = ByteBuffer.wrap(payloadBytes, 4, payloadSize).array();
+                        System.out.println("Piece size: " + payloadSize);
+
+                        // Write to the file
+                        App.writeData(pieceIndex, pieceBytes);
 
                         // Mark that we have received that piece in our bitfield
                         System.out.println("Piece index: " + pieceIndex);

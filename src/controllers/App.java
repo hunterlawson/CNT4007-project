@@ -1,14 +1,15 @@
 package controllers;
 
 import exceptions.AppConfigException;
-import exceptions.InvalidMessageException;
 import models.messages.HandshakeMessage;
-import models.messages.Message;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.*;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
 
 public class App {
     private static App instance = null;
@@ -20,10 +21,6 @@ public class App {
     public static HashMap<Integer, BitSet> bitfieldMap = new HashMap<>();
 
     PeerLogger logger;
-
-    Timer timer;
-    TimerTask optimisticUnchoke;
-    TimerTask setPreferedNeighbors;
 
     //file object
     static public RandomAccessFile file;
@@ -47,20 +44,14 @@ public class App {
 
     // Peer data
     ArrayList<Peer> peers = new ArrayList<>();
-    ArrayList<Peer> connected_peers = new ArrayList<>();
-    ArrayList<ClientHandler> connections = new ArrayList<>();
-    ArrayList<ClientHandler> unchoked_clients = new ArrayList<>();
-    ArrayList<ClientHandler> choked_clients = new ArrayList<>();
 
     // Private constructor - singleton class
     // This constructor is called in the public getApp function
-    private App(int peerId) throws AppConfigException {
+    private App(int peerId) throws Exception {
         // Read in the config file data and store it in the app
         readConfigFiles();
 
         logger = new PeerLogger(peerId);
-        timer = new Timer();
-
 
         // Set the current peer using the peerId passed in and searching the list of peers given in the file
         for(Peer p : peers) {
@@ -83,6 +74,9 @@ public class App {
             thisBitfield.set(0, thisBitfield.size());
         }
         bitfieldMap.put(this.thisPeer.getId(), thisBitfield);
+
+        // Create this peer's file
+        newPeerFile(this.thisPeer);
     }
 
     // Performs any validation of configuration files and throws any errors that might occur
@@ -191,34 +185,41 @@ public class App {
         outStream.flush();
     }
 
-    public void newPeerFile() throws FileNotFoundException {
-        String pathName = "peer_" + thisPeer.id;
-        File newPeerDirectory = new File(pathName);
-        newPeerDirectory.mkdir();
-        file = new RandomAccessFile(newPeerDirectory.getAbsolutePath() + "/" + this.filename, "rw");
+    public void newPeerFile(Peer thisPeer) throws Exception {
+        File newPeerDirectory = new File("peer_" + thisPeer.id + "/");
+        if(!newPeerDirectory.exists()) {
+            newPeerDirectory.mkdirs();
+        }
+        file = new RandomAccessFile("peer_" + thisPeer.id + "/" + filename, "rw");
+
+        System.out.println("file created");
     }
 
-    public synchronized byte[] readData(int pieceNumber) throws IOException {
-        int startPosition = pieceNumber * pieceSize;
+    public static synchronized byte[] readData(int pieceIndex) throws IOException {
+        int startPosition = pieceIndex * pieceSize;
         byte[] pieceBytes;
-        if(fileSize % numPieces != 0){
+        if(pieceIndex == numPieces - 1){
             pieceBytes = new byte[fileSize % numPieces];
         } else {
             pieceBytes = new byte[pieceSize];
         }
+
+        System.out.println("Reading file: " + pieceBytes.length);
+
         file.seek(startPosition);
-        for(int i = 0; i < pieceBytes.length; i++){
-            pieceBytes[i] = file.readByte();
+        ByteBuffer dataBuffer = ByteBuffer.allocate(pieceBytes.length);
+        for(int i = 0; i < pieceBytes.length; i++) {
+            dataBuffer.put(file.readByte());
         }
-        return pieceBytes;
+        //System.out.println(pieceBytes[i]);
+
+        return dataBuffer.array();
     }
 
-    public synchronized void writeData(int pieceNumber, byte[] pieceBytes) throws IOException {
-        int startingPosition = pieceNumber * pieceBytes.length;
+    public static synchronized void writeData(int pieceIndex, byte[] pieceBytes) throws IOException {
+        int startingPosition = pieceIndex * pieceSize;
         file.seek(startingPosition);
-        for(int i = 0; i < pieceBytes.length; i++){
-            file.writeByte(pieceBytes[i]);
-        }
+        file.write(pieceBytes, 0, pieceBytes.length);
     }
 
     // Run the peer application
@@ -271,49 +272,7 @@ public class App {
                     socket, inputStream, outputStream, logger);
 
             clientHandler.start();
-            connected_peers.add(targetPeer);
-            connections.add(clientHandler);
-            choked_clients.add(clientHandler);
         }
-
-        optimisticUnchoke = new TimerTask() {
-            @Override
-            public void run() {
-                if (choked_clients.size() > 0) {
-                    Collections.shuffle(choked_clients);
-                    ClientHandler client = choked_clients.get(0);
-                    try {
-                        Message message = new Message(Message.MessageType.UNCHOKE);
-                        client.outStream.write(message.getMessageBytes());
-                        client.outStream.flush();
-                        choked_clients.remove(0);
-                    } catch (InvalidMessageException e) {
-                        throw new RuntimeException(e);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        };
-        setPreferedNeighbors = new TimerTask() {
-            @Override
-            public void run() {
-                for (ClientHandler client: connections) {
-                    try {
-                        Message message = new Message(Message.MessageType.UNCHOKE);
-                        client.outStream.write(message.getMessageBytes());
-                        client.outStream.flush();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    } catch (InvalidMessageException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        };
-
-        timer.schedule(optimisticUnchoke, 0, optimisticChokingInterval*1000);
-        //timer.schedule(setPreferedNeighbors, 0, unchokingInterval*1000);
 
         // Peer server connection listener
         ServerSocket serverSocket = new ServerSocket(this.thisPeer.port);
@@ -349,8 +308,7 @@ public class App {
             // Spawn a handler thread to handle the rest of the connection
             ClientHandler clientHandler = new ClientHandler(this.thisPeer, targetPeer,
                     socket, inputStream, outputStream, logger);
-            connections.add(clientHandler);
-            choked_clients.add(clientHandler);
+
             clientHandler.start();
         }
     }
